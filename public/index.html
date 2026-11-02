@@ -3156,7 +3156,7 @@ function vendMake(it, reluct) {
   else { TCH.spin = 1.4; SFX.whoosh(); teacherSay('주문 접수. 후다닥—', 2); }
   setTimeout(() => {
       SFX.ding();
-      addToShelf({ type: 'menu', plate: !!(ORDERS[String(it.shape).slice(2)] || {}).plate, shape: it.shape, k: it.k, ears: it.ears, nest: it.nest, gc: it.gc, gl: it.gl, photo: it.photo, desc: it.desc, name: it.name, by: '자판기', date: new Date().toLocaleDateString('ko-KR') }, true);
+      addToShelf({ type: 'menu', vid: it.id, plate: !!(ORDERS[String(it.shape).slice(2)] || {}).plate, shape: it.shape, k: it.k, ears: it.ears, nest: it.nest, gc: it.gc, gl: it.gl, photo: it.photo, desc: it.desc, name: it.name, by: '자판기', date: new Date().toLocaleDateString('ko-KR') }, true);
       teacherSay(`띵. ${it.name} 나왔습니다. 선반에 있어요.`, 5);
     }, reluct ? 3600 : 1500);
 }
@@ -4819,8 +4819,8 @@ const VM = (() => {
     const p = m.geometry.attributes.position, n = (a, y) => Math.sin(a * 7 + y * 90) * .5 + Math.sin(a * 13 - y * 160 + 1.3) * .3 + Math.sin(a * 23 + y * 260 + 2.1) * .2;
     for (let i = 0; i < p.count; i++) { const x = p.getX(i), y = p.getY(i), z = p.getZ(i), a = Math.atan2(z, x), r = Math.hypot(x, z); if (r < .01) continue; const f = 1 + .045 * n(a, y) * smooth01(y / .015); p.setX(i, x * f); p.setZ(i, z * f); if (y > .06) p.setY(i, y + .0025 * Math.sin(a * 3 + 1)); }
     m.geometry.computeVertexNormals(); return g; };
-  const BY_PHOTO = { '03850b88fe2293e051b4459a20c38c1b': 'mvxsgr7e', d9589a991d37d4c45cc1ba81e4aabbe8: 'nemo', '11196a17d474596a3b3e3a427cea5cde': 'fishbone', '498359d6ab31f48ae25a499445f2d8d7': 'mvxqpmrg', d8a817a93ec13866cfa9fef3908e31e0: 'mvxqvt1g', '5f0a4db77db88acbd8cde7cdf78edd9d': 'mvxqx6hd', '474e9e44fd41d6537a8ed1d223dea906': 'mvxqye59', '25c5200102b230739c131f8ed517a3e3': 'mvxqzs89', '2498fe7e796391a909964e84fff5b2e6': 'mvxr19b1', c8ef2b025faadb070fae290a0ffbca22: 'mvxrxe6y', '1e67ad438cf12a6269d8df7fbf96d3b7': 'mvxrzwep', '0075f9c6e1702b0ab869419d1a275cc8': 'mvxs1m7g', '568b537a0dda6f620ca97ff018127a94': 'mvxs5elg', d9a572d698aeef2c0202aac80c57f475: 'mvxsaba4', d8d8a3c453f48e6f4efad4e1e2ac17ac: 'mvxscrfo', '71b8026c50d319fbb4152fb9d65263c4': 'mvxsejwe', '3da275abd321a1fedaccecba5aa7b885': 'mvxsfwku', b775575d2d36147818e9456581409f6a: 'mvxsjmk5', e5f1c613b100de2e133fc3d0a7ec5f11: 'mvxsljpi' };
-  const key = it => (it && (M[it.id] ? it.id : BY_PHOTO[it.photo])) || null;
+  const BY_PHOTO = { '14c3a7bbe1d89ea5f60d4517e28775ad': 'pungryu', '03850b88fe2293e051b4459a20c38c1b': 'mvxsgr7e', d9589a991d37d4c45cc1ba81e4aabbe8: 'nemo', '11196a17d474596a3b3e3a427cea5cde': 'fishbone', '498359d6ab31f48ae25a499445f2d8d7': 'mvxqpmrg', d8a817a93ec13866cfa9fef3908e31e0: 'mvxqvt1g', '5f0a4db77db88acbd8cde7cdf78edd9d': 'mvxqx6hd', '474e9e44fd41d6537a8ed1d223dea906': 'mvxqye59', '25c5200102b230739c131f8ed517a3e3': 'mvxqzs89', '2498fe7e796391a909964e84fff5b2e6': 'mvxr19b1', c8ef2b025faadb070fae290a0ffbca22: 'mvxrxe6y', '1e67ad438cf12a6269d8df7fbf96d3b7': 'mvxrzwep', '0075f9c6e1702b0ab869419d1a275cc8': 'mvxs1m7g', '568b537a0dda6f620ca97ff018127a94': 'mvxs5elg', d9a572d698aeef2c0202aac80c57f475: 'mvxsaba4', d8d8a3c453f48e6f4efad4e1e2ac17ac: 'mvxscrfo', '71b8026c50d319fbb4152fb9d65263c4': 'mvxsejwe', '3da275abd321a1fedaccecba5aa7b885': 'mvxsfwku', b775575d2d36147818e9456581409f6a: 'mvxsjmk5', e5f1c613b100de2e133fc3d0a7ec5f11: 'mvxsljpi' };
+  const key = it => (it && (M[it.vid] ? it.vid : M[it.id] ? it.id : BY_PHOTO[it.photo])) || null;
   return { M, key, make: it => { const k = key(it); if (!k) return null; const g = M[k](); g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); return g; } };
 })();
 function smooth01(x) { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); }
@@ -4983,7 +4983,7 @@ function pourTick(dt) {
 // ================= 자판기 신작: 풍류주전자 =================
 VM.M.pungryu = () => {
   const g = new THREE.Group(), SILK = new THREE.MeshPhysicalMaterial({ color: C('#f4f5f3'), roughness: .42, clearcoat: .35, clearcoatRoughness: .4 });
-  const L = (pts, seg = 64) => { const m = new THREE.Mesh(new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg), SILK); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  const L = (pts, seg = 64) => { const sm = new THREE.SplineCurve(pts.map(p => new THREE.Vector2(p[0], p[1]))).getPoints(pts.length * 8).map(v => new THREE.Vector2(Math.max(0, v.x), v.y)); const m = new THREE.Mesh(new THREE.LatheGeometry(sm, seg), SILK); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
   L([[0, 0], [.026, 0], [.03, .003], [.044, .016], [.052, .036], [.052, .056], [.045, .073], [.034, .082], [.03, .084], [0, .084]]);
   L([[0, .082], [.031, .082], [.032, .085], [.028, .088], [.008, .089], [.004, .093], [.012, .098], [.011, .1], [0, .1]], 40);
   const sp = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-.04, .03, 0), V3(-.058, .042, 0), V3(-.074, .058, 0)]), 16, 1, 14, false), SILK);
