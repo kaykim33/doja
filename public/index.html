@@ -515,19 +515,44 @@ const teaG = new THREE.Group(); teaG.position.set(TEA.x, 0, TEA.z); scene.add(te
 mesh(rbox(1.05, .05, .66, .02), std('#7e5a3e', .6, { map: T.wood }), 0, .36, 0, teaG);
 [[-.45, -.26], [.45, -.26], [-.45, .26], [.45, .26]].forEach(([x, z]) => mesh(rbox(.06, .34, .06, .015), std('#6e4c33', .7), x, .17, z, teaG));
 [[-.0, -.62, '#7b8aa3'], [.0, .62, '#c9a35c']].forEach(([x, z, c]) => { const cu = mesh(rbox(.5, .08, .5, .04), std(c, 1, { map: T.cushion }), x, .04, z, teaG); });
-const teapot = new THREE.Group(); teapot.position.set(-.1, .385, .02); teaG.add(teapot);
-mesh(lathe([[0, 0], [.05, 0], [.075, .03], [.08, .07], [.065, .11], [.04, .125], [0, .125]], 32), glazeWhite, 0, 0, 0, teapot);
-mesh(lathe([[0, 0], [.035, 0], [.03, .015], [.012, .02], [.015, .035], [0, .04]], 20), glazeWhite, 0, .12, 0, teapot);
-const spout = mesh(new THREE.CylinderGeometry(.008, .016, .1, 10), glazeWhite, .09, .07, 0, teapot); spout.rotation.z = -1.0;
-const handle = mesh(new THREE.TorusGeometry(.04, .009, 8, 16, Math.PI * 1.2), glazeWhite, -.085, .07, 0, teapot); handle.rotation.z = Math.PI * .4;
-const cup = new THREE.Group(); cup.position.set(.12, .385, .05); teaG.add(cup);
-mesh(lathe([[0, 0], [.022, 0], [.024, .008], [.02, .008], [.035, .03], [.042, .055], [.038, .056], [.031, .032], [0, .014]], 32), glazeWhite, 0, 0, 0, cup);
+// ---- 찻자리: 손잡이 달린 백자 바구니 다구 (Kay 작품) ----
+const TW = new THREE.MeshPhysicalMaterial({ color: C('#f4f6f3'), roughness: .2, clearcoat: 1, clearcoatRoughness: .1 });
+const TCEL = new THREE.MeshPhysicalMaterial({ color: C('#e2eee6'), roughness: .16, clearcoat: 1 });
+const TIVO = new THREE.MeshPhysicalMaterial({ color: C('#efe9dc'), roughness: .3, clearcoat: .8 });
+const basket = new THREE.Group(); basket.position.set(0, .385, 0); teaG.add(basket);
+{
+  const W = .4, D = .34, H = .07, t = .008, r = .03;
+  const sq = (w, d, rr) => { const s = new THREE.Shape(), x = w / 2, z = d / 2; s.moveTo(-x + rr, -z); s.lineTo(x - rr, -z); s.quadraticCurveTo(x, -z, x, -z + rr); s.lineTo(x, z - rr); s.quadraticCurveTo(x, z, x - rr, z); s.lineTo(-x + rr, z); s.quadraticCurveTo(-x, z, -x, z - rr); s.lineTo(-x, -z + rr); s.quadraticCurveTo(-x, -z, -x + rr, -z); return s; };
+  const wall = sq(W, D, r); wall.holes.push(sq(W - 2 * t, D - 2 * t, r - t));
+  const wm = new THREE.Mesh(new THREE.ExtrudeGeometry(wall, { depth: H, bevelEnabled: true, bevelThickness: .002, bevelSize: .002, bevelSegments: 2, curveSegments: 10 }), TW); wm.rotation.x = -Math.PI / 2; wm.castShadow = wm.receiveShadow = true; basket.add(wm);
+  // 아래로 갈수록 살짝 좁아지게
+  const pp = wm.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 - .06 * (1 - pp.getZ(i) / H); pp.setX(i, pp.getX(i) * k); pp.setY(i, pp.getY(i) * k); } wm.geometry.computeVertexNormals();
+  const fl = new THREE.Mesh(new THREE.ExtrudeGeometry(sq(W * .94, D * .94, r), { depth: t, bevelEnabled: false, curveSegments: 10 }), TW); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; basket.add(fl);
+  // 아치 손잡이 (좌우로)
+  const arc = new THREE.CatmullRomCurve3([V3(-W / 2 + .004, H - .01, 0), V3(-W / 2 + .03, H + .12, 0), V3(-W / 4, H + .2, 0), V3(0, H + .215, 0), V3(W / 4, H + .2, 0), V3(W / 2 - .03, H + .12, 0), V3(W / 2 - .004, H - .01, 0)]);
+  const hg = new THREE.TubeGeometry(arc, 48, 1, 10, false); const hp = hg.attributes.position, sp = arc.getSpacedPoints(48);
+  // 납작한 띠 모양으로
+  for (let i = 0; i < hp.count; i++) { const seg = Math.floor(i / 11), c = sp[Math.min(seg, 48)], dx = hp.getX(i) - c.x, dy = hp.getY(i) - c.y, dz = hp.getZ(i) - c.z; hp.setX(i, c.x + dx * .006); hp.setY(i, c.y + dy * .006); hp.setZ(i, c.z + dz * .022); }
+  hg.computeVertexNormals(); const hm = new THREE.Mesh(hg, TW); hm.castShadow = true; basket.add(hm);
+  // 숙우 (뒤 오른쪽)
+  const jug = new THREE.Group(); jug.position.set(-.1, .008, .07); basket.add(jug);
+  const jm = mesh(lathe([[0, 0], [.03, 0], [.034, .006], [.042, .04], [.046, .085], [.043, .087], [.039, .042], [.03, .01], [0, .01]], 48), TCEL, 0, 0, 0, jug);
+  const jp = jm.geometry.attributes.position; for (let i = 0; i < jp.count; i++) { const x = jp.getX(i), y = jp.getY(i), z = jp.getZ(i), a = Math.atan2(z, x), k = Math.pow(Math.max(0, Math.cos(a)), 8) * smooth(.05, .087, y); jp.setX(i, x * (1 + .35 * k)); jp.setY(i, y + .006 * k); } jm.geometry.computeVertexNormals();
+  jug.rotation.y = -.5;
+  // 받침 (앞 왼쪽)
+  mesh(lathe([[0, 0], [.03, 0], [.05, .004], [.058, .009], [.054, .01], [0, .006]], 40), TIVO, .1, .008, -.07, basket);
+}
+const teapot = new THREE.Group(); teapot.position.set(-.06, .393, -.07); teaG.add(teapot);
+mesh(lathe([[0, 0], [.022, 0], [.036, .012], [.042, .032], [.038, .052], [.026, .062], [.024, .064], [0, .064]], 40), TCEL, 0, 0, 0, teapot);
+mesh(lathe([[0, 0], [.025, 0], [.026, .006], [.016, .014], [.006, .016], [.007, .024], [0, .025]], 32), TCEL, 0, .062, 0, teapot);
+mesh(new THREE.SphereGeometry(.0025, 8, 6), std('#5a5550', .5), .012, .08, .004, teapot, false);
+const spout = mesh(new THREE.CylinderGeometry(.004, .008, .028, 10), TCEL, .046, .036, 0, teapot); spout.rotation.z = -1.1;
+const handle = new THREE.Group(); teapot.add(handle);
+const cup = new THREE.Group(); cup.position.set(.1, .4, -.07); teaG.add(cup);
+mesh(lathe([[0, 0], [.012, 0], [.013, .006], [.016, .007], [.036, .042], [.04, .046], [.037, .046], [.032, .04], [.012, .01], [0, .009]], 40), TIVO, 0, 0, 0, cup);
 const teaLiquid = mesh(new THREE.CircleGeometry(.03, 24), std('#b48a3a', .1, { transparent: true, opacity: .9 }), 0, .016, 0, cup, false); teaLiquid.rotation.x = -Math.PI / 2; teaLiquid.visible = false;
 const pourCurve = new THREE.QuadraticBezierCurve3(V3(0, 0, 0), V3(.03, .02, 0), V3(.06, -.1, 0));
 const pour = mesh(new THREE.TubeGeometry(pourCurve, 10, .0035, 5), new THREE.MeshBasicMaterial({ color: C('#c99b4a'), transparent: true, opacity: .85 }), 0, 0, 0, scene, false); pour.visible = false;
-const persim = new THREE.Group(); persim.position.set(.22, .385, -.18); teaG.add(persim);
-mesh(new THREE.CylinderGeometry(.08, .06, .012, 24), glazeWhite, 0, .006, 0, persim);
-for (let i = 0; i < 3; i++) { const p = mesh(new THREE.SphereGeometry(.025, 12, 8), std('#c0602a', .5), Math.cos(i * 2.1) * .03, .028, Math.sin(i * 2.1) * .03, persim); p.scale.y = .7; }
 const steam = [];
 for (let i = 0; i < 8; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.glow, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); s.userData.t = i / 8; scene.add(s); steam.push(s); }
 // 램프
@@ -1837,7 +1862,7 @@ function frame(now) {
   // 차
   if (TEAS.pour > 0) { TEAS.pour -= dt; const k = 1 - TEAS.pour / 2.6, tilt = Math.sin(Math.min(1, k * 1.4) * Math.PI) * .6; teapot.rotation.z = -tilt; teaLift(tilt); pour.visible = tilt > .35; if (pour.visible) pourTube(); TEAS.fill = Math.min(1, TEAS.fill + (tilt > .35 ? dt * .45 : 0)); } else { teapot.rotation.z = lerp(teapot.rotation.z, 0, dt * 4); teaLift(-teapot.rotation.z); pour.visible = false; }
   teaLiquid.visible = TEAS.fill > .02; teaLiquid.position.y = .014 + TEAS.fill * .03; teaLiquid.scale.setScalar(.75 + TEAS.fill * .35);
-  if (TEAS.sip > 0) { TEAS.sip -= dt; const k = Math.sin((1 - TEAS.sip / 1.6) * Math.PI); cup.position.y = .385 + k * .12; cup.rotation.z = k * .5; } else { cup.position.y = .385; cup.rotation.z = 0; }
+  if (TEAS.sip > 0) { TEAS.sip -= dt; const k = Math.sin((1 - TEAS.sip / 1.6) * Math.PI); cup.position.y = .4 + k * .12; cup.rotation.z = k * .5; } else { cup.position.y = .4; cup.rotation.z = 0; }
   const cw = cup.getWorldPosition(new THREE.Vector3()); steam.forEach(s => { s.userData.t = (s.userData.t + dt * .18) % 1; const k = s.userData.t; s.position.set(cw.x + Math.sin(t + k * 6) * .02, cw.y + .06 + k * .25, cw.z); s.scale.setScalar(.04 + k * .1); s.material.opacity = TEAS.fill > .1 ? Math.sin(k * Math.PI) * .22 : 0; });
   // 캐릭터
   teacherTick(dt, t); dogTick(dt, t); birdTick(dt, t); avatarsTick(dt, t);
@@ -2313,9 +2338,9 @@ function closeChat() { $('#chatbar').hidden = true; ui.log.classList.remove('ope
 $('#chatB').onclick = () => { SFX.ui(); if ($('#chatbar').hidden) openChat(); else closeChat(); };
 
 // ================= 차 따르기 =================
-function teaLift(tilt) { const l = clamp(tilt / .6, 0, 1); teapot.position.set(-.1 + l * .05, .385 + l * .09, .02 + l * .03); }
+function teaLift(tilt) { const l = clamp(tilt / .6, 0, 1); teapot.position.set(-.06 + l * .08, .393 + l * .11, -.07); }
 function pourTube() {
-  const tip = teapot.localToWorld(V3(.132, .097, 0)), mouth = cup.localToWorld(V3(0, .03 + TEAS.fill * .02, 0));
+  const tip = teapot.localToWorld(V3(.058, .048, 0)), mouth = cup.localToWorld(V3(0, .03 + TEAS.fill * .02, 0));
   const mid = tip.clone().lerp(mouth, .5); mid.y = Math.max(tip.y, mouth.y) + .012;
   const g = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(tip, mid, mouth), 12, .0028, 6, false);
   pour.geometry.dispose(); pour.geometry = g; pour.position.set(0, 0, 0); pour.scale.set(1, 1, 1);
@@ -2676,7 +2701,7 @@ function showHint(text, sec = 5) {
 }
 
 // ================= 차 권하기는 몸짓으로 =================
-const offerCup = cup.clone(true); offerCup.position.set(.36, .385, .14); offerCup.visible = false; teaG.add(offerCup);
+const offerCup = cup.clone(true); offerCup.position.set(.4, .385, .2); offerCup.visible = false; teaG.add(offerCup);
 offerCup.traverse(o => { if (o.material === teaLiquid.material) { o.visible = true; o.position.y = .04; } });
 const offerSteam = [];
 for (let i = 0; i < 5; i++) { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: T.glow, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false })); s.userData.t = i / 5; scene.add(s); offerSteam.push(s); }
