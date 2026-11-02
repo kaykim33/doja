@@ -3106,7 +3106,7 @@ function vendClean(it) {
     id: String(it.id || Date.now().toString(36)).slice(0, 20), name: String(it.name || '이름 없는 작품').slice(0, 20), desc: String(it.desc || '').slice(0, 300), shape,
     k: gnum(it.k, .6, 1.4, 1), ears: !!it.ears, nest: Math.round(gnum(it.nest, 1, 3, 1)), gc: /^#[0-9a-f]{6}$/i.test(it.gc || '') ? it.gc : '#f1f0ec',
     gl: VEND_GLOSS.some(g => g[0] === it.gl) ? it.gl : 'satin', photo: /^[0-9a-f]{32}$/.test(String(it.photo || '')) ? String(it.photo) : null,
-    refuse: String(it.refuse || '').slice(0, 120), beg: String(it.beg || '').slice(0, 30), agree: String(it.agree || '').slice(0, 120)
+    refuse: String(it.refuse || '').slice(0, 120), beg: String(it.beg || '').slice(0, 30), agree: String(it.agree || '').slice(0, 120), nw: !!it.nw
   };
 }
 function customGlaze(hex, gl) {
@@ -3161,7 +3161,7 @@ function vendMake(it, reluct) {
     }, reluct ? 3600 : 1500);
 }
 function vendBtn(it) {
-  return btn(it.name, () => {
+  return btn((it.nw ? '<span class="newb">NEW</span> ' : '') + esc(it.name), () => {
     closeSheet();
     if (!it.refuse) { vendMake(it, false); return; }
     TCH.shake = 1.8; teacherSay(it.refuse, 6);
@@ -4861,7 +4861,7 @@ function tapAt_c2(x, y) {
 }
 function vcabCard(it) {
   const opts = []; if (it.photo) { const im = el('img'); im.src = '/_blob/' + it.photo; im.alt = it.name || ''; im.style.cssText = 'width:100%;max-height:40vh;object-fit:contain;border-radius:10px'; im.onerror = () => im.remove(); opts.push(im); }
-  sheet(it.name || '자판기 작품', it.desc || '자판기 작품', opts);
+  sheet((it.nw ? '🆕 ' : '') + (it.name || '자판기 작품'), it.desc || '자판기 작품', opts);
 }
 function zones() { const Z = zones_c(); Z.push({ id: 'cab', x: CAB.x + .8, z: CAB.z, r: .8, text: '자판기 작품장 보기', run: () => go('cab') }); return Z; }
 let vmLast = performance.now();
@@ -4979,6 +4979,29 @@ function pourTick(dt) {
   }
   bloom(); let lastS = seasonNow(); setInterval(() => { const s = seasonNow(); if (s !== lastS) { lastS = s; bloom(); } }, 5000);
 }
+
+// ================= 자판기 신작: 풍류주전자 =================
+VM.M.pungryu = () => {
+  const g = new THREE.Group(), SILK = new THREE.MeshPhysicalMaterial({ color: C('#f4f5f3'), roughness: .42, clearcoat: .35, clearcoatRoughness: .4 });
+  const L = (pts, seg = 64) => { const m = new THREE.Mesh(new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg), SILK); m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  L([[0, 0], [.026, 0], [.03, .003], [.044, .016], [.052, .036], [.052, .056], [.045, .073], [.034, .082], [.03, .084], [0, .084]]);
+  L([[0, .082], [.031, .082], [.032, .085], [.028, .088], [.008, .089], [.004, .093], [.012, .098], [.011, .1], [0, .1]], 40);
+  const sp = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(-.04, .03, 0), V3(-.058, .042, 0), V3(-.074, .058, 0)]), 16, 1, 14, false), SILK);
+  const pp = sp.geometry.attributes.position, pts = sp.geometry.parameters.path.getSpacedPoints(16);
+  for (let i = 0; i < pp.count; i++) { const k = Math.floor(i / 15), c = pts[Math.min(k, 16)], r = .011 - .0065 * (k / 16); const dx = pp.getX(i) - c.x, dy = pp.getY(i) - c.y, dz = pp.getZ(i) - c.z, l = Math.hypot(dx, dy, dz) || 1; pp.setXYZ(i, c.x + dx / l * r, c.y + dy / l * r, c.z + dz / l * r); }
+  sp.geometry.computeVertexNormals(); sp.castShadow = true; g.add(sp);
+  const arc = new THREE.CatmullRomCurve3([V3(-.03, .07, 0), V3(-.034, .12, 0), V3(-.016, .162, 0), V3(.012, .168, 0), V3(.034, .14, 0), V3(.04, .095, 0), V3(.042, .06, 0)]);
+  const h = new THREE.Mesh(new THREE.TubeGeometry(arc, 40, .0045, 12, false), SILK); h.castShadow = true; g.add(h);
+  return g;
+};
+const VEND_NEW = [{ id: 'pungryu', name: '풍류주전자', desc: '차와 술을 다정하게 품어내는 실크백자. 자판기 신작이에요.', shape: 'o:hang', k: 1.1, ears: false, nest: 1, gc: '#f4f5f3', gl: 'satin', photo: '14c3a7bbe1d89ea5f60d4517e28775ad', refuse: '', beg: '', agree: '', nw: true }];
+setInterval(() => { VEND_NEW.forEach(n => { if (!VEND.items.some(x => x.id === n.id)) VEND.items.unshift(vendClean(n)); }); }, 1000);
+VEND_NEW.forEach(n => VEND.items.unshift(vendClean(n)));
+{ const st = document.createElement('style'); st.textContent = '.newb{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff;background:#c8382c;border-radius:6px;padding:1px 5px;vertical-align:1px}'; document.head.appendChild(st); }
+// 작품장: 신상에 NEW 꼬리표
+const NEWTAG = (() => { const t = canvasTex(128, 56, (c, w, h) => { c.fillStyle = '#c8382c'; c.beginPath(); c.roundRect ? c.roundRect(4, 6, w - 8, h - 12, 14) : c.rect(4, 6, w - 8, h - 12); c.fill(); c.fillStyle = '#fff'; c.font = '700 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('NEW', w / 2, h / 2 + 1); }); return new THREE.SpriteMaterial({ map: t, depthTest: false }); })();
+const renderCab_n = renderCab;
+renderCab = function () { renderCab_n(); CAB.slots.forEach(s => { let it = null; s.traverse(o => { if (o.userData && o.userData.click && o.userData.click.it) it = o.userData.click.it; }); if (it && it.nw) { const sp = new THREE.Sprite(NEWTAG); sp.scale.set(.08, .035, 1); sp.position.set(0, .27, 0); s.add(sp); } }); };
 </script>
 
 
