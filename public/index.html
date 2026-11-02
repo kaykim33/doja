@@ -203,7 +203,7 @@ body.zen #top,body.zen #dock,body.zen #rail,body.zen #back,body.zen #labels,body
     <canvas id="tcv" width="256" height="256"></canvas>
     <input id="tTxt" maxlength="14" placeholder="한 줄 (선택)">
     <div class="row">
-      <div style="display:flex;gap:8px" id="brushes"></div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px" id="brushes"></div>
       <div style="display:flex;gap:6px"><button class="chip" id="tClr">지우기</button><button class="chip" id="tCancel">닫기</button><button class="chip on" id="tSave">굽기</button></div>
     </div>
   </div>
@@ -1645,7 +1645,7 @@ function openTile_old(i) {
   TM.idx = i; $('#tileM').hidden = false; tileClear(); $('#tTxt').value = '';
   if (TILES[i]) { const img = new Image(); img.onload = () => tg.drawImage(img, 0, 0); img.src = TILES[i]; }
 }
-['#2c4f9a', '#8a5a2b', '#b25846', '#4f6b4a', '#2d2622'].forEach((c, k) => { const b = el('button', 'brush' + (k ? '' : ' on')); b.style.background = c; b.type = 'button'; b.setAttribute('aria-label', '붓 색'); b.onclick = () => { TM.col = c; [...b.parentNode.children].forEach(x => x.classList.toggle('on', x === b)); }; $('#brushes').append(b); });
+['#2c4f9a', '#7fb3d5', '#e2b53b', '#c8382c', '#b25846', '#e8a3ad', '#4f6b4a', '#8fb6a3', '#8a5a2b', '#2d2622'].forEach((c, k) => { const b = el('button', 'brush' + (k ? '' : ' on')); b.style.background = c; b.type = 'button'; b.setAttribute('aria-label', '붓 색'); b.onclick = () => { TM.col = c; [...b.parentNode.children].forEach(x => x.classList.toggle('on', x === b)); }; $('#brushes').append(b); });
 const tpos = e => { const r = tcv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * 256, (e.clientY - r.top) / r.height * 256]; };
 tcv.addEventListener('pointerdown', e => { TM.drawing = true; TM.last = tpos(e); tcv.setPointerCapture(e.pointerId); });
 tcv.addEventListener('pointermove', e => { if (!TM.drawing) return; const p = tpos(e); tg.strokeStyle = TM.col; tg.globalAlpha = .8; tg.lineCap = 'round'; tg.lineWidth = 5 + Math.random() * 2; tg.beginPath(); tg.moveTo(TM.last[0], TM.last[1]); tg.lineTo(p[0], p[1]); tg.stroke(); tg.globalAlpha = 1; TM.last = p; });
