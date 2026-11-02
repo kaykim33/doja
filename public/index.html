@@ -4900,6 +4900,28 @@ try { if (localStorage.getItem('soyoho_rec')) setTimeout(() => recApply(true), 5
     if (foot) { sh.insertBefore(p, foot); sh.insertBefore(row, foot); sh.insertBefore(tip, foot); } else sh.append(p, row, tip);
   };
 }
+
+// ================= 찻자리 곶감 + 자판기 찻자리 쉰소리 =================
+{
+  const dish = new THREE.Group(); dish.position.set(.38, .385, -.12); teaG.add(dish);
+  mesh(lathe([[0, 0], [.04, 0], [.06, .006], [.07, .012], [.066, .013], [0, .007]], 40), TW, 0, 0, 0, dish);
+  const gam = std('#a5512a', .55), stem = std('#4a3826', .8);
+  [[-.022, .006, .4], [.022, -.01, -.6], [0, .024, 1.9]].forEach(([x, z, r]) => { const g = new THREE.Group(); g.position.set(x, .016, z); g.rotation.y = r; dish.add(g);
+    const b = mesh(new THREE.SphereGeometry(.022, 16, 10), gam, 0, 0, 0, g); b.scale.set(1, .5, 1.05);
+    mesh(new THREE.CylinderGeometry(.008, .009, .004, 8), std('#5a4a30', .8), 0, .011, 0, g); mesh(new THREE.CylinderGeometry(.0015, .0015, .01, 6), stem, 0, .017, 0, g); });
+}
+const TEA_LINES = [
+  '아무래도 찻자리엔, 햄부기보다는 곶감 아닐까요?',
+  '이 바구니는 소요호 회원님 작품이에요. 요즘은 햄부기 원정대로 바쁘시대요.',
+  '햄버거 투어도 좋지만, 차 한 잔 하고 가세요.',
+  '바구니째 들고 소풍 가도 돼요. 햄부기 원정대 말고 곶감 원정대로.',
+  '곶감 하나, 차 한 모금. 이게 원정이죠.',
+  '손잡이 잡으면 차가 쏟아져요. 들고 가고 싶은 마음은 알아요.',
+  '햄부기에 감자튀김이면, 찻자리엔 곶감이에요.'
+];
+let teaLineAt = -1e9;
+const goT = go;
+go = function (id) { const r = goT.apply(this, arguments); if (id === 'tea' && performance.now() - teaLineAt > 40000) { teaLineAt = performance.now(); setTimeout(() => { if (S.station === 'tea') teacherSay(pick(TEA_LINES), 5); }, 1600); } return r; };
 </script>
 
 
