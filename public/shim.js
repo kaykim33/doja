@@ -49,7 +49,30 @@
     delete: id => fetch(API + 'assets/' + encodeURIComponent(id), { method: 'DELETE', credentials: 'same-origin' }).then(asJson),
     list: () => Promise.resolve({ assets: [], usage: {} })
   });
-  window.claude = Object.freeze({ use: name => name === 'db' ? Promise.resolve(db) : name === 'user' ? Promise.resolve(user) : name === 'assets' ? me().then(r => (r.admin ? assets : null)) : Promise.resolve(null) });
+  // 실시간 방: 같이 있는 사람 보기·말하기
+  function makeRoom() {
+    const fns = new Set(), others = new Map(); let ws = null, myPeer = null, mine = null, wait = 1000, alive = true;
+    const emit = () => { const peers = [...others.entries()].map(([peer, presence]) => ({ peer, presence, isMe: false, kind: 'viewer' })); if (myPeer) peers.push({ peer: myPeer, presence: mine || {}, isMe: true, kind: 'viewer' }); fns.forEach(f => { try { f({ peers }); } catch (e) {} }); };
+    const connect = () => {
+      if (!alive) return;
+      try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/api/room'); } catch (e) { return; }
+      ws.onmessage = ev => { let m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+        if (m.t === 'hello') { myPeer = m.peer; others.clear(); (m.peers || []).forEach(p => { if (p.peer !== myPeer && p.presence) others.set(p.peer, p.presence); }); wait = 1000; if (mine) ws.send(JSON.stringify({ t: 'p', p: mine })); emit(); }
+        else if (m.t === 'p' && m.peer !== myPeer) { others.set(m.peer, m.presence); emit(); }
+        else if (m.t === 'bye') { others.delete(m.peer); emit(); } };
+      ws.onclose = () => { others.clear(); myPeer = null; emit(); setTimeout(connect, wait); wait = Math.min(30000, wait * 2); };
+    };
+    connect();
+    setInterval(() => { if (ws && ws.readyState === 1) ws.send('{"t":"ping"}'); }, 25000);
+    return Object.freeze({
+      presence: p => { mine = p; if (ws && ws.readyState === 1) ws.send(JSON.stringify({ t: 'p', p })); return Promise.resolve(); },
+      onPeers: f => { fns.add(f); emit(); return () => fns.delete(f); },
+      emit: () => Promise.resolve(), on: () => () => {}
+    });
+  }
+  let ROOMP = null;
+  const getRoom = () => ROOMP || (ROOMP = fetch(API + 'room', { method: 'HEAD' }).then(r => (r.status === 503 ? null : makeRoom())).catch(() => null));
+  window.claude = Object.freeze({ use: name => name === 'db' ? Promise.resolve(db) : name === 'user' ? Promise.resolve(user) : name === 'assets' ? me().then(r => (r.admin ? assets : null)) : name === 'room' ? getRoom() : Promise.resolve(null) });
   // 관리자: 주소 끝에 #admin 을 붙이면 비밀번호를 물어요
   const askAdmin = () => me().then(r => {
     if (r.admin) return; const pw = prompt('관리자 비밀번호'); if (!pw) return;

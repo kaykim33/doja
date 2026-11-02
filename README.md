@@ -16,3 +16,9 @@
 
 ## 데이터
 처음 열릴 때 `lib/seed.json` 의 공지·자판기 작품·전시를 DB에 한 번 채워요. 옮겨 온 사진은 `public/blob/`.
+
+## 같이 하기 (실시간)
+`realtime/` 폴더는 별도 Worker(`doja-room`)예요. 같이 있는 사람의 위치·닉네임·말을 주고받아요.
+1. Workers 및 Pages → 애플리케이션 생성 → Continue with GitHub → `doja` → 고급 설정의 **루트 디렉터리**에 `realtime` → 배포
+2. Pages `doja` → 설정 → 바인딩 → 추가 → **Durable Object** → 변수 이름 `ROOM`, Worker `doja-room`, 클래스 `Room`
+3. Pages 배포 다시 시도
