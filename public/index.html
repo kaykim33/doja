@@ -519,36 +519,37 @@ mesh(rbox(1.05, .05, .66, .02), std('#7e5a3e', .6, { map: T.wood }), 0, .36, 0, 
 const TW = new THREE.MeshPhysicalMaterial({ color: C('#f4f6f3'), roughness: .2, clearcoat: 1, clearcoatRoughness: .1 });
 const TCEL = new THREE.MeshPhysicalMaterial({ color: C('#e2eee6'), roughness: .16, clearcoat: 1 });
 const TIVO = new THREE.MeshPhysicalMaterial({ color: C('#efe9dc'), roughness: .3, clearcoat: .8 });
+var JUG = null, JUGI = null; const JUGS = { fill: 0, t: 0 };
 const basket = new THREE.Group(); basket.position.set(0, .385, 0); teaG.add(basket);
 {
-  const W = .4, D = .34, H = .07, t = .008, r = .03;
+  const W = .4, D = .34, H = .1, t = .008, r = .03, Wt = W * .92;
   const sq = (w, d, rr) => { const s = new THREE.Shape(), x = w / 2, z = d / 2; s.moveTo(-x + rr, -z); s.lineTo(x - rr, -z); s.quadraticCurveTo(x, -z, x, -z + rr); s.lineTo(x, z - rr); s.quadraticCurveTo(x, z, x - rr, z); s.lineTo(-x + rr, z); s.quadraticCurveTo(-x, z, -x, z - rr); s.lineTo(-x, -z + rr); s.quadraticCurveTo(-x, -z, -x + rr, -z); return s; };
   const wall = sq(W, D, r); wall.holes.push(sq(W - 2 * t, D - 2 * t, r - t));
   const wm = new THREE.Mesh(new THREE.ExtrudeGeometry(wall, { depth: H, bevelEnabled: true, bevelThickness: .002, bevelSize: .002, bevelSegments: 2, curveSegments: 10 }), TW); wm.rotation.x = -Math.PI / 2; wm.castShadow = wm.receiveShadow = true; basket.add(wm);
-  // 아래로 갈수록 살짝 좁아지게
-  const pp = wm.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 - .06 * (1 - pp.getZ(i) / H); pp.setX(i, pp.getX(i) * k); pp.setY(i, pp.getY(i) * k); } wm.geometry.computeVertexNormals();
+  // 위로 갈수록 살짝 좁아지게
+  const pp = wm.geometry.attributes.position; for (let i = 0; i < pp.count; i++) { const k = 1 - .08 * clamp(pp.getZ(i) / H, 0, 1); pp.setX(i, pp.getX(i) * k); pp.setY(i, pp.getY(i) * k); } wm.geometry.computeVertexNormals();
   const fl = new THREE.Mesh(new THREE.ExtrudeGeometry(sq(W * .94, D * .94, r), { depth: t, bevelEnabled: false, curveSegments: 10 }), TW); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; basket.add(fl);
   // 아치 손잡이 (좌우로)
-  const arc = new THREE.CatmullRomCurve3([V3(-W / 2 + .004, H - .01, 0), V3(-W / 2 + .03, H + .12, 0), V3(-W / 4, H + .2, 0), V3(0, H + .215, 0), V3(W / 4, H + .2, 0), V3(W / 2 - .03, H + .12, 0), V3(W / 2 - .004, H - .01, 0)]);
+  const arc = new THREE.CatmullRomCurve3([V3(-Wt / 2 + .004, H - .012, 0), V3(-Wt / 2 + .02, H + .07, 0), V3(-Wt / 4, H + .12, 0), V3(0, H + .13, 0), V3(Wt / 4, H + .12, 0), V3(Wt / 2 - .02, H + .07, 0), V3(Wt / 2 - .004, H - .012, 0)]);
   const hg = new THREE.TubeGeometry(arc, 48, 1, 10, false); const hp = hg.attributes.position, sp = arc.getSpacedPoints(48);
   // 납작한 띠 모양으로
   for (let i = 0; i < hp.count; i++) { const seg = Math.floor(i / 11), c = sp[Math.min(seg, 48)], dx = hp.getX(i) - c.x, dy = hp.getY(i) - c.y, dz = hp.getZ(i) - c.z; hp.setX(i, c.x + dx * .006); hp.setY(i, c.y + dy * .006); hp.setZ(i, c.z + dz * .022); }
   hg.computeVertexNormals(); const hm = new THREE.Mesh(hg, TW); hm.castShadow = true; basket.add(hm);
   // 숙우 (뒤 오른쪽)
-  const jug = new THREE.Group(); jug.position.set(-.1, .008, .07); basket.add(jug);
-  const jm = mesh(lathe([[0, 0], [.03, 0], [.034, .006], [.042, .04], [.046, .085], [.043, .087], [.039, .042], [.03, .01], [0, .01]], 48), TCEL, 0, 0, 0, jug);
+  const jug = new THREE.Group(); jug.position.set(-.1, .008, .07); basket.add(jug); jug.scale.setScalar(1.35); JUG = jug; const jugI = new THREE.Group(); jug.add(jugI); JUGI = jugI;
+  const jm = mesh(lathe([[0, 0], [.03, 0], [.034, .006], [.042, .04], [.046, .085], [.043, .087], [.039, .042], [.03, .01], [0, .01]], 48), TCEL, 0, 0, 0, jugI);
   const jp = jm.geometry.attributes.position; for (let i = 0; i < jp.count; i++) { const x = jp.getX(i), y = jp.getY(i), z = jp.getZ(i), a = Math.atan2(z, x), k = Math.pow(Math.max(0, Math.cos(a)), 8) * smooth(.05, .087, y); jp.setX(i, x * (1 + .35 * k)); jp.setY(i, y + .006 * k); } jm.geometry.computeVertexNormals();
-  jug.rotation.y = -.5;
+  jug.rotation.y = .61;
   // 받침 (앞 왼쪽)
-  mesh(lathe([[0, 0], [.03, 0], [.05, .004], [.058, .009], [.054, .01], [0, .006]], 40), TIVO, .1, .008, -.07, basket);
+  { const sc = mesh(lathe([[0, 0], [.03, 0], [.05, .004], [.058, .009], [.054, .01], [0, .006]], 40), TIVO, .1, .008, -.07, basket); sc.scale.set(1.15, 1, 1.15); }
 }
-const teapot = new THREE.Group(); teapot.position.set(-.06, .393, -.07); teaG.add(teapot);
+const teapot = new THREE.Group(); teapot.position.set(-.06, .393, -.07); teapot.rotation.y = -1.84; teapot.scale.setScalar(1.2); teaG.add(teapot);
 mesh(lathe([[0, 0], [.022, 0], [.036, .012], [.042, .032], [.038, .052], [.026, .062], [.024, .064], [0, .064]], 40), TCEL, 0, 0, 0, teapot);
 mesh(lathe([[0, 0], [.025, 0], [.026, .006], [.016, .014], [.006, .016], [.007, .024], [0, .025]], 32), TCEL, 0, .062, 0, teapot);
 mesh(new THREE.SphereGeometry(.0025, 8, 6), std('#5a5550', .5), .012, .08, .004, teapot, false);
 const spout = mesh(new THREE.CylinderGeometry(.004, .008, .028, 10), TCEL, .046, .036, 0, teapot); spout.rotation.z = -1.1;
 const handle = new THREE.Group(); teapot.add(handle);
-const cup = new THREE.Group(); cup.position.set(.1, .4, -.07); teaG.add(cup);
+const cup = new THREE.Group(); cup.position.set(.1, .4, -.07); cup.scale.setScalar(1.15); teaG.add(cup);
 mesh(lathe([[0, 0], [.012, 0], [.013, .006], [.016, .007], [.036, .042], [.04, .046], [.037, .046], [.032, .04], [.012, .01], [0, .009]], 40), TIVO, 0, 0, 0, cup);
 const teaLiquid = mesh(new THREE.CircleGeometry(.03, 24), std('#b48a3a', .1, { transparent: true, opacity: .9 }), 0, .016, 0, cup, false); teaLiquid.rotation.x = -Math.PI / 2; teaLiquid.visible = false;
 const pourCurve = new THREE.QuadraticBezierCurve3(V3(0, 0, 0), V3(.03, .02, 0), V3(.06, -.1, 0));
@@ -1492,7 +1493,7 @@ function floatPetal() {
 }
 const TEAS = { pour: 0, sip: 0, fill: 0 };
 function pourTea_v() {
-  if (TEAS.pour > 0) return; TEAS.pour = 2.6; SFX.pour(2.3); teaLiquid.visible = true;
+  if (TEAS.pour > 0) return; TEAS.pour = PT_T; SFX.pour(2.0); setTimeout(() => SFX.pour(2.0), 2600); teaLiquid.visible = true;
   if (Math.random() < .2) setTimeout(() => showHint('찻잎 하나가 똑바로 섰어요. 오늘 좋은 일이 있대요.', 5), 2800);
 }
 function sipTea_s() {
@@ -1860,7 +1861,7 @@ function frame(now) {
   leafFloat.position.set(Math.cos(t * .12) * .35, .222, Math.sin(t * .12) * .35); leafFloat.rotation.z = t * .2;
   for (let i = petals.length - 1; i >= 0; i--) { const p = petals[i], u = p.userData; u.life -= dt; if (u.fall) { p.position.y -= dt * .3; p.rotation.x = -Math.PI / 2 + Math.sin(t * 5) * .5; if (p.position.y < .222) { p.position.y = .222; u.fall = false; p.rotation.x = -Math.PI / 2; SFX.bubble(AU.ctx ? AU.ctx.currentTime : 0, 900, .03); } } else { u.a += dt * .15; p.position.x = Math.cos(u.a) * u.r; p.position.z = Math.sin(u.a) * u.r; } if (u.life < 0) { fountG.remove(p); petals.splice(i, 1); } }
   // 차
-  if (TEAS.pour > 0) { TEAS.pour -= dt; const k = 1 - TEAS.pour / 2.6, tilt = Math.sin(Math.min(1, k * 1.4) * Math.PI) * .6; teapot.rotation.z = -tilt; teaLift(tilt); pour.visible = tilt > .35; if (pour.visible) pourTube(); TEAS.fill = Math.min(1, TEAS.fill + (tilt > .35 ? dt * .45 : 0)); } else { teapot.rotation.z = lerp(teapot.rotation.z, 0, dt * 4); teaLift(-teapot.rotation.z); pour.visible = false; }
+  pourTick(dt);
   teaLiquid.visible = TEAS.fill > .02; teaLiquid.position.y = .014 + TEAS.fill * .03; teaLiquid.scale.setScalar(.75 + TEAS.fill * .35);
   if (TEAS.sip > 0) { TEAS.sip -= dt; const k = Math.sin((1 - TEAS.sip / 1.6) * Math.PI); cup.position.y = .4 + k * .12; cup.rotation.z = k * .5; } else { cup.position.y = .4; cup.rotation.z = 0; }
   const cw = cup.getWorldPosition(new THREE.Vector3()); steam.forEach(s => { s.userData.t = (s.userData.t + dt * .18) % 1; const k = s.userData.t; s.position.set(cw.x + Math.sin(t + k * 6) * .02, cw.y + .06 + k * .25, cw.z); s.scale.setScalar(.04 + k * .1); s.material.opacity = TEAS.fill > .1 ? Math.sin(k * Math.PI) * .22 : 0; });
@@ -4922,6 +4923,27 @@ const TEA_LINES = [
 let teaLineAt = -1e9;
 const goT = go;
 go = function (id) { const r = goT.apply(this, arguments); if (id === 'tea' && performance.now() - teaLineAt > 40000) { teaLineAt = performance.now(); setTimeout(() => { if (S.station === 'tea') teacherSay(pick(TEA_LINES), 5); }, 1600); } return r; };
+
+// ================= 차 따르기: 주전자 → 숙우 → 잔 =================
+const PT_A = 2.5, PT_T = 5.4, TP0 = V3(-.06, .393, -.07);
+function streamTo(a, b) { const mid = a.clone().lerp(b, .5); mid.y = Math.max(a.y, b.y) + .01; const g = new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(a, mid, b), 12, .0028, 6, false); pour.geometry.dispose(); pour.geometry = g; pour.position.set(0, 0, 0); pour.scale.set(1, 1, 1); }
+function jugPose(t) { JUGS.t = t; JUG.position.set(-.1 + .1 * t, .008 + .11 * t, .07 - .07 * t); JUGI.rotation.z = -t * 1.05; }
+function teaLift(tilt) { const l = clamp(tilt / .6, 0, 1); teapot.position.set(TP0.x - .005 * l, TP0.y + .17 * l, TP0.z + .015 * l); }
+function pourTick(dt) {
+  if (!JUG) return;
+  if (TEAS.pour > 0) {
+    TEAS.pour -= dt; const e = PT_T - TEAS.pour;
+    if (e < PT_A) {
+      const k = e / PT_A, tilt = Math.sin(Math.min(1, k * 1.25) * Math.PI) * .75;
+      teapot.rotation.z = -tilt; teaLift(tilt); jugPose(lerp(JUGS.t, 0, dt * 5));
+      pour.visible = tilt > .45; if (pour.visible) { streamTo(teapot.localToWorld(V3(.058, .048, 0)), JUGI.localToWorld(V3(0, .05 + JUGS.fill * .025, 0))); JUGS.fill = Math.min(1, JUGS.fill + dt * .9); }
+    } else {
+      teapot.rotation.z = lerp(teapot.rotation.z, 0, dt * 5); teaLift(-teapot.rotation.z);
+      const k = (e - PT_A) / (PT_T - PT_A), up = Math.sin(Math.min(1, k * 1.15) * Math.PI); jugPose(up);
+      pour.visible = up > .6 && JUGS.fill > .05; if (pour.visible) { streamTo(JUGI.localToWorld(V3(.062, .093, 0)), cup.localToWorld(V3(0, .03 + TEAS.fill * .02, 0))); TEAS.fill = Math.min(1, TEAS.fill + dt * .7); JUGS.fill = Math.max(0, JUGS.fill - dt * .8); }
+    }
+  } else { teapot.rotation.z = lerp(teapot.rotation.z, 0, dt * 4); teaLift(-teapot.rotation.z); if (JUGS.t > .001) jugPose(lerp(JUGS.t, 0, dt * 4)); pour.visible = false; }
+}
 </script>
 
 
