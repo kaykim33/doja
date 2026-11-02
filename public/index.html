@@ -4904,7 +4904,7 @@ try { if (localStorage.getItem('soyoho_rec')) setTimeout(() => recApply(true), 5
 
 // ================= 찻자리 곶감 + 자판기 찻자리 쉰소리 =================
 {
-  const dish = new THREE.Group(); dish.position.set(.38, .385, -.12); teaG.add(dish);
+  const dish = new THREE.Group(); dish.position.set(.17, .389, -.245); teaG.add(dish);
   mesh(lathe([[0, 0], [.04, 0], [.06, .006], [.07, .012], [.066, .013], [0, .007]], 40), TW, 0, 0, 0, dish);
   const gam = std('#a5512a', .55), stem = std('#4a3826', .8);
   [[-.022, .006, .4], [.022, -.01, -.6], [0, .024, 1.9]].forEach(([x, z, r]) => { const g = new THREE.Group(); g.position.set(x, .016, z); g.rotation.y = r; dish.add(g);
@@ -4943,6 +4943,41 @@ function pourTick(dt) {
       pour.visible = up > .6 && JUGS.fill > .05; if (pour.visible) { streamTo(JUGI.localToWorld(V3(.062, .093, 0)), cup.localToWorld(V3(0, .03 + TEAS.fill * .02, 0))); TEAS.fill = Math.min(1, TEAS.fill + dt * .7); JUGS.fill = Math.max(0, JUGS.fill - dt * .8); }
     }
   } else { teapot.rotation.z = lerp(teapot.rotation.z, 0, dt * 4); teaLift(-teapot.rotation.z); if (JUGS.t > .001) jugPose(lerp(JUGS.t, 0, dt * 4)); pour.visible = false; }
+}
+
+// ================= 찻자리 앞: 차포 · 차호 · 찻숟가락 · 계절 꽃병 =================
+{
+  const linen = canvasTex(256, 96, (g, w, h) => { g.fillStyle = '#ddd2bd'; g.fillRect(0, 0, w, h); for (let y = 0; y < h; y += 2) { g.fillStyle = `rgba(120,100,70,${.03 + Math.random() * .05})`; g.fillRect(0, y, w, 1); } for (let x = 0; x < w; x += 2) { g.fillStyle = `rgba(255,255,255,${Math.random() * .06})`; g.fillRect(x, 0, 1, h); } g.strokeStyle = 'rgba(110,85,55,.35)'; g.lineWidth = 2; g.strokeRect(6, 6, w - 12, h - 12); });
+  const cloth = mesh(new THREE.BoxGeometry(.58, .003, .2), std('#ffffff', .95, { map: linen }), .0, .3865, -.245, teaG, false); cloth.rotation.y = .03; cloth.receiveShadow = true;
+  // 차호 (찻잎 단지)
+  const jar = new THREE.Group(); jar.position.set(-.04, .388, -.245); teaG.add(jar);
+  mesh(lathe([[0, 0], [.022, 0], [.03, .01], [.034, .03], [.032, .048], [.022, .058], [.02, .062], [0, .062]], 40), TCEL, 0, 0, 0, jar);
+  mesh(lathe([[0, 0], [.023, 0], [.024, .005], [.016, .011], [.005, .013], [.006, .02], [0, .021]], 32), TCEL, 0, .061, 0, jar);
+  // 대나무 찻숟가락
+  const sc = new THREE.Group(); sc.position.set(-.16, .392, -.25); sc.rotation.y = .5; teaG.add(sc);
+  const bam = std('#c7a46a', .6), node = std('#a88550', .6);
+  const sg = new THREE.BoxGeometry(.13, .003, .014, 20, 1, 3), sp = sg.attributes.position;
+  for (let i = 0; i < sp.count; i++) { const x = sp.getX(i), z = sp.getZ(i); sp.setY(i, sp.getY(i) + Math.pow(Math.max(0, (x + .02) / .085), 2) * .012 - Math.abs(z) * .25 * (x > .02 ? 1 : 0)); sp.setZ(i, z * (x > .02 ? 1.25 : .7)); }
+  sg.computeVertexNormals(); mesh(sg, bam, 0, 0, 0, sc); mesh(new THREE.BoxGeometry(.006, .005, .012), node, -.01, .001, 0, sc);
+  // 계절 꽃병 (옆)
+  const vase = new THREE.Group(); vase.position.set(-.4, .385, .12); teaG.add(vase);
+  mesh(lathe([[0, 0], [.022, 0], [.032, .03], [.03, .07], [.016, .105], [.012, .125], [.016, .13], [0, .13]], 40), TW, 0, 0, 0, vase);
+  const fl = new THREE.Group(); fl.position.y = .12; vase.add(fl);
+  function bloom() {
+    while (fl.children.length) fl.remove(fl.children[0]);
+    const s = seasonNow(), stemM = std(s === 'autumn' ? '#9c8a5a' : '#5d6e3a', .8);
+    const stems = s === 'autumn' ? 5 : 3;
+    for (let i = 0; i < stems; i++) {
+      const a = i / stems * TAU + .3, lean = .18 + .08 * (i % 2), len = s === 'autumn' ? .3 + i * .02 : .2 + i * .03;
+      const tip = V3(Math.cos(a) * lean * len, len, Math.sin(a) * lean * len);
+      const st = new THREE.Mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(V3(0, 0, 0), V3(tip.x * .3, len * .6, tip.z * .3), tip), 8, .0018, 5), stemM); fl.add(st);
+      if (s === 'autumn') { const pl = mesh(new THREE.ConeGeometry(.012, .09, 8), std('#e6dccb', .9), tip.x * 1.08, tip.y + .02, tip.z * 1.08, fl, false); pl.rotation.set(Math.sin(a) * .5, 0, -Math.cos(a) * .5); }
+      else if (s === 'winter') { const f = mesh(new THREE.SphereGeometry(.018, 12, 8), std('#c1272d', .5), tip.x, tip.y, tip.z, fl, false); f.scale.y = .7; mesh(new THREE.SphereGeometry(.006, 8, 6), std('#f2c94c', .5), tip.x, tip.y + .01, tip.z, fl, false); }
+      else if (s === 'summer') { for (let k = 0; k < 9; k++) mesh(new THREE.SphereGeometry(.007, 6, 5), std(k % 2 ? '#8fa8d8' : '#b7a3d9', .6), tip.x + Math.cos(k) * .015, tip.y + Math.sin(k * 1.7) * .012, tip.z + Math.sin(k) * .015, fl, false); }
+      else { for (let k = 0; k < 4; k++) mesh(new THREE.SphereGeometry(.006, 8, 6), std('#f7f2ee', .5), tip.x * (1 - k * .2), tip.y - k * .03, tip.z * (1 - k * .2), fl, false); }
+    }
+  }
+  bloom(); let lastS = seasonNow(); setInterval(() => { const s = seasonNow(); if (s !== lastS) { lastS = s; bloom(); } }, 5000);
 }
 </script>
 
