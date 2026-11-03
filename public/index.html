@@ -1,4 +1,4 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>도자의 숲 · 초SOYOHO</title><meta name="description" content="흙멍하러 오세요. 물레 돌리고, 굽 깎고, 불멍 물멍 하는 온라인 도자기 공방."><meta property="og:title" content="모여봐요 도자의 숲"><meta property="og:description" content="초SOYOHO 온라인 흙멍 공방"><style>:root{color-scheme:light;box-sizing:border-box}*,*::before,*::after{box-sizing:inherit}html,body{margin:0;padding:0;height:100%}</style><script src="/shim.js"></script></head><body><title>도자의 숲</title>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"><title>도자의 숲 · 초SOYOHO</title><meta name="description" content="흙멍하러 오세요. 물레 돌리고, 굽 깎고, 불멍 물멍 하는 온라인 도자기 공방."><meta property="og:title" content="모여봐요 도자의 숲"><meta property="og:description" content="초SOYOHO 온라인 흙멍 공방"><style>:root{color-scheme:light;box-sizing:border-box}*,*::before,*::after{box-sizing:inherit}html,body{margin:0;padding:0;height:100%;touch-action:manipulation;-webkit-text-size-adjust:100%}button,a,input,textarea,select{touch-action:manipulation}input,textarea,select{font-size:16px!important}</style><script src="/shim.js"></script></head><body><title>도자의 숲</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gowun+Dodum&display=swap">
@@ -5002,6 +5002,10 @@ VEND_NEW.forEach(n => VEND.items.unshift(vendClean(n)));
 const NEWTAG = (() => { const t = canvasTex(128, 56, (c, w, h) => { c.fillStyle = '#c8382c'; c.beginPath(); c.roundRect ? c.roundRect(4, 6, w - 8, h - 12, 14) : c.rect(4, 6, w - 8, h - 12); c.fill(); c.fillStyle = '#fff'; c.font = '700 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('NEW', w / 2, h / 2 + 1); }); return new THREE.SpriteMaterial({ map: t, depthTest: false }); })();
 const renderCab_n = renderCab;
 renderCab = function () { renderCab_n(); CAB.slots.forEach(s => { let it = null; s.traverse(o => { if (o.userData && o.userData.click && o.userData.click.it) it = o.userData.click.it; }); if (it && it.nw) { const sp = new THREE.Sprite(NEWTAG); sp.scale.set(.08, .035, 1); sp.position.set(0, .27, 0); s.add(sp); } }); };
+
+// iOS: 두 번 톡 확대·손가락 확대 막기 (확대된 채로 남는 문제)
+['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+{ let lastT = 0; document.addEventListener('touchend', e => { const n = Date.now(); if (n - lastT < 320 && !(e.target.closest && e.target.closest('input,textarea'))) e.preventDefault(); lastT = n; }, { passive: false }); }
 </script>
 
 
