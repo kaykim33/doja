@@ -5005,6 +5005,142 @@ renderCab = function () { renderCab_n(); CAB.slots.forEach(s => { let it = null;
 
 // iOS: 두 번 톡 확대·손가락 확대 막기 (확대된 채로 남는 문제)
 ['gesturestart', 'gesturechange'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+
+// ================= 특별한 날 (크리스마스 · 새해 정미년 · 설날 · 추석 · 생일) =================
+const DAYS = (() => {
+  const q = (location.search.match(/[?&]day=([a-z-]+)/) || [])[1];
+  const kst = new Date(Date.now() + 9 * 3600e3), Y = kst.getUTCFullYear(), M = kst.getUTCMonth() + 1, D = kst.getUTCDate(), H = kst.getUTCHours();
+  const md = M * 100 + D, ymd = Y * 10000 + md;
+  const SEOL = { 2027: 20270206, 2028: 20280126, 2029: 20290213, 2030: 20300203 }, CHUSEOK = { 2026: 20260925, 2027: 20270915, 2028: 20281003, 2029: 20290922, 2030: 20300912 };
+  const near = (a, d) => a && Math.abs((Date.UTC(Math.floor(a / 1e4), Math.floor(a / 100) % 100 - 1, a % 100) - Date.UTC(Y, M - 1, D)) / 864e5) <= d;
+  const E = {
+    xmas: q ? q === 'xmas' : M === 12,
+    xmasEve: q ? q === 'xmas' : md === 1224 || md === 1225,
+    ny: q ? q === 'newyear' : M === 1,
+    nyDay: q ? q === 'newyear' : md === 101,
+    seol: q ? q === 'seollal' : near(SEOL[Y], 1),
+    chuseok: q ? q === 'chuseok' : near(CHUSEOK[Y], 1),
+    jbday: q ? q === 'jbday' : md === 1117,
+    kbday: q ? q === 'kbday' : md === 303
+  };
+  E.sheepYear = (q === 'newyear' || q === 'seollal') ? 2027 : Y;
+  E.night = H >= 17 || H < 6; E.any = Object.keys(E).some(k => ['xmas', 'ny', 'seol', 'chuseok', 'jbday', 'kbday'].includes(k) && E[k]);
+  return E;
+})();
+(() => {
+  if (!DAYS.any) return;
+  const glossy = c => new THREE.MeshPhysicalMaterial({ color: C(c), roughness: .2, clearcoat: 1, clearcoatRoughness: .1 });
+  const WHITE = glossy('#f6f6f2'), RED = glossy('#b8302a'), GOLD = new THREE.MeshStandardMaterial({ color: C('#d7ad4e'), roughness: .3, metalness: .85 });
+  const glowMat = c => new THREE.MeshBasicMaterial({ color: C(c) });
+  const TW = []; // 반짝이는 전구
+  const bulb = (x, y, z, c, par, r = .018) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), glowMat(c)); m.position.set(x, y, z); (par || scene).add(m); TW.push({ m, c: C(c), ph: rand(0, TAU), sp: rand(1.5, 3.5) }); return m; };
+  const banner = (text, sub, x, y, z, w, bg = '#b8302a', fg = '#fbf5ea') => {
+    const tex = canvasTex(1024, 220, (g, W, Hh) => { g.fillStyle = bg; g.fillRect(0, 0, W, Hh); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; g.strokeRect(14, 14, W - 28, Hh - 28); g.fillStyle = fg; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 84px "Gowun Batang", serif'; g.fillText(text, W / 2, sub ? 92 : Hh / 2); if (sub) { g.font = '44px "Gowun Dodum", sans-serif'; g.globalAlpha = .9; g.fillText(sub, W / 2, 170); } });
+    const m = mesh(new THREE.PlaneGeometry(w, w * 220 / 1024), new THREE.MeshStandardMaterial({ map: tex, roughness: .9, side: THREE.DoubleSide }), x, y, z, scene, false);
+    [-1, 1].forEach(s => mesh(new THREE.CylinderGeometry(.003, .003, .3, 4), std('#6b5a48'), x + s * w * .45, y + w * 220 / 1024 / 2 + .15, z, scene, false)); return m;
+  };
+  const head = teacher.userData && teacher.userData.head;
+  const teaPlate = (maker) => { const g = new THREE.Group(); g.position.set(-.38, .386, -.14); teaG.add(g); mesh(lathe([[0, 0], [.05, 0], [.075, .007], [.085, .014], [.08, .015], [0, .008]], 40), WHITE, 0, 0, 0, g); maker(g); return g; };
+  const lines = [];
+
+  // ---- 크리스마스 (12월 한 달) ----
+  if (DAYS.xmas) {
+    // 창 위 가랜드
+    const pine = std('#2f5a3a', .9, { flatShading: true });
+    const curve = new THREE.CatmullRomCurve3([-3.35, -2.2, -1.1, 0, 1.1, 2.2, 3.35].map((x, i) => V3(x, 2.9 - (i % 2 ? .12 : 0), -3.93)));
+    mesh(new THREE.TubeGeometry(curve, 80, .045, 7, false), pine, 0, 0, 0, scene, false);
+    curve.getSpacedPoints(36).forEach((p, i) => bulb(p.x, p.y - .03, p.z + .04, ['#ffd27a', '#ff6b5b', '#fff3d6', '#9fd6a0'][i % 4]));
+    // 창에 매단 백자 별
+    const star = new THREE.Shape(); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU + Math.PI / 2, r = i % 2 ? .035 : .08; i ? star.lineTo(Math.cos(a) * r, Math.sin(a) * r) : star.moveTo(Math.cos(a) * r, Math.sin(a) * r); }
+    const sg = new THREE.ExtrudeGeometry(star, { depth: .012, bevelEnabled: true, bevelThickness: .006, bevelSize: .006, bevelSegments: 2 });
+    const STARS = [];
+    [-2.8, -1.7, -.6, .5].forEach((x, i) => { const y = 2.55 - (i % 2) * .25; mesh(new THREE.CylinderGeometry(.0015, .0015, 2.86 - y, 4), std('#b9a98f'), x, (2.86 + y) / 2, -3.97, scene, false); const s = mesh(sg, WHITE, x, y, -3.97, scene, false); STARS.push(s); });
+    // 실내 트리
+    const tr = new THREE.Group(); tr.position.set(4.35, 0, -3.3); scene.add(tr);
+    mesh(new THREE.CylinderGeometry(.16, .13, .22, 20), WHITE, 0, .11, 0, tr);
+    mesh(new THREE.CylinderGeometry(.03, .04, .3, 8), std('#6b4a32'), 0, .3, 0, tr);
+    [[.55, .6, .45], [.45, .55, .85], [.33, .5, 1.2], [.2, .4, 1.5]].forEach(([r, h, y]) => { const c = mesh(new THREE.ConeGeometry(r, h, 10), std('#2f5a3a', .9, { flatShading: true }), 0, y, 0, tr); c.rotation.y = rand(0, 3); });
+    for (let i = 0; i < 22; i++) { const y = .3 + Math.random() * 1.3, r = (1.75 - y) * .33, a = rand(0, TAU); const o = mesh(new THREE.SphereGeometry(.03, 10, 8), i % 3 ? WHITE : RED, Math.cos(a) * r, y, Math.sin(a) * r, tr, false); }
+    for (let i = 0; i < 40; i++) { const y = .3 + i / 40 * 1.3, r = (1.78 - y) * .32, a = i * 1.1; bulb(Math.cos(a) * r, y, Math.sin(a) * r, i % 2 ? '#ffd27a' : '#fff3d6', tr, .014); }
+    mesh(sg, GOLD, 0, 1.78, -.006, tr, false).scale.setScalar(1.1);
+    const tl = new THREE.PointLight(C('#ffcf8a'), .6, 3, 2); tl.position.set(0, 1.1, .3); tr.add(tl);
+    if (typeof BOXES !== 'undefined') BOXES.push([3.95, 4.8, -3.7, -2.9]);
+    // 문 위 리스 (안·밖)
+    [-3.97, -4.24].forEach(z => { const w = mesh(new THREE.TorusGeometry(.17, .045, 8, 28), pine, 2.28, 2.62, z, scene, false); for (let i = 0; i < 10; i++) { const a = i / 10 * TAU; mesh(new THREE.SphereGeometry(.018, 8, 6), i % 2 ? RED : WHITE, 2.28 + Math.cos(a) * .17, 2.62 + Math.sin(a) * .17, z + (z > -4 ? .03 : -.03), scene, false); } mesh(new THREE.BoxGeometry(.12, .05, .02), RED, 2.28, 2.45, z + (z > -4 ? .04 : -.04), scene, false); });
+    // 정원 나무에 전구
+    GTREES.forEach(t => { if (Math.hypot(t.x, t.z + 10) > 9) return; const n = t.type === 'pine' ? 34 : 26; for (let i = 0; i < n; i++) { const y = t.H * (.75 + Math.random() * .5), r = (t.type === 'pine' ? (t.H * 1.25 - y) * .5 : .8) * t.k, a = rand(0, TAU); bulb(t.x + Math.cos(a) * r, y + (t.type === 'pine' ? 0 : rand(-.2, .4)), t.z + Math.sin(a) * r, ['#ffd27a', '#ff8a6b', '#fff3d6'][i % 3], null, .03); } });
+    // 자판기 산타 모자 · 김탄 빨간 목도리
+    if (head) { const h = new THREE.Group(); h.position.set(0, .16, -.02); h.rotation.set(-.25, 0, .15); head.add(h); mesh(new THREE.TorusGeometry(.19, .04, 8, 28), WHITE, 0, 0, 0, h).rotation.x = Math.PI / 2; const c = mesh(new THREE.ConeGeometry(.19, .32, 20), RED, 0, .16, -.03, h); c.rotation.x = -.35; mesh(new THREE.SphereGeometry(.045, 12, 10), WHITE, 0, .29, -.12, h); }
+    const sc = mesh(new THREE.TorusGeometry(.092, .022, 8, 24), std('#b8302a', .9), 0, .17, .24, dog, false); sc.rotation.x = 1.15; const tail2 = mesh(new THREE.BoxGeometry(.04, .1, .02), std('#b8302a', .9), .05, .1, .32, dog, false); tail2.rotation.z = .3;
+    lines.push('12월엔 공방에도 불이 하나씩 더 켜져요.', '올해 착한 흙이었어요? 가마는 다 알고 있어요.', '산타 모자 어때요. 흙 묻으면 안 돼요.', '김탄 목도리는 제가 떠 줬어요. 한 코씩.');
+    // 24·25일: 눈
+    if (DAYS.xmasEve) {
+      const N = 900, pos = new Float32Array(N * 3); for (let i = 0; i < N; i++) { pos[i * 3] = rand(-9, 9); pos[i * 3 + 1] = rand(0, 7); pos[i * 3 + 2] = rand(-16, -4.4); }
+      const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      const snow = new THREE.Points(gg, new THREE.PointsMaterial({ color: 0xffffff, size: .05, transparent: true, opacity: .9, depthWrite: false })); scene.add(snow);
+      let last = performance.now(); requestAnimationFrame(function sn(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; for (let i = 0; i < N; i++) { pos[i * 3 + 1] -= dt * (.35 + (i % 7) * .05); pos[i * 3] += Math.sin(now / 1000 + i) * dt * .1; if (pos[i * 3 + 1] < 0) pos[i * 3 + 1] = 7; } gg.attributes.position.needsUpdate = true; if (typeof SEASON !== 'undefined') SEASON.snow = Math.min(1, (SEASON.snow || 0) + dt * .004); requestAnimationFrame(sn); });
+      lines.push('메리 크리스마스. 오늘은 창밖에 눈이 와요.');
+    }
+    let st = performance.now(); requestAnimationFrame(function sw(now) { const t = now / 1000; STARS.forEach((s, i) => s.rotation.y = Math.sin(t * .6 + i) * .5); requestAnimationFrame(sw); });
+  }
+
+  // ---- 새해 · 정미년 붉은 양 (1월 한 달) ----
+  const makeSheep = (s = 1) => {
+    const g = new THREE.Group(), wool = glossy('#b8302a'), face = glossy('#f3ece2');
+    const b = mesh(curlyGeo ? curlyGeo(.12, 2, .1, 3) : new THREE.SphereGeometry(.12, 16, 12), wool, 0, .16, 0, g); b.scale.set(1.25, .95, .95);
+    const hd = new THREE.Group(); hd.position.set(.15, .23, 0); g.add(hd);
+    const f = mesh(new THREE.SphereGeometry(.05, 16, 12), face, 0, 0, 0, hd); f.scale.set(1.3, 1, .9);
+    [-1, 1].forEach(z => { const h = mesh(new THREE.TorusGeometry(.03, .011, 8, 18, Math.PI * 1.5), GOLD, -.01, .03, z * .045, hd); h.rotation.set(0, z * .4, -.6); mesh(new THREE.SphereGeometry(.007, 8, 6), std('#2b2522'), .045, .012, z * .022, hd); });
+    [[.07, .06], [.07, -.06], [-.07, .06], [-.07, -.06]].forEach(([x, z]) => mesh(new THREE.CylinderGeometry(.016, .014, .1, 8), face, x, .05, z, g));
+    g.scale.setScalar(s); g.traverse(o => { if (o.isMesh) o.castShadow = true; }); return g;
+  };
+  if (DAYS.ny || DAYS.seol) {
+    banner(`${DAYS.sheepYear} 丁未年`, '붉은 양의 해 · 새해 복 많이 받으세요', -1.1, 2.66, -3.9, 2.1);
+    const s1 = makeSheep(.9); s1.position.set(-2.95, .755, -3.86); s1.rotation.y = -.4; scene.add(s1);
+    const s2 = makeSheep(2.6); s2.position.set(FOUNT.x - 1.4, 0, FOUNT.z + .6); s2.rotation.y = 2.3; scene.add(s2);
+    const s3 = makeSheep(.45); s3.position.set(.32, .386, .24); s3.rotation.y = -2.4; teaG.add(s3);
+    lines.push('정미년, 붉은 양의 해예요. 양처럼 순하게, 흙처럼 단단하게.', '올해는 붉은 유약이 잘 오를 거예요. 양이 그러래요.', '양털처럼 보드라운 한 해 되세요.');
+  }
+  if (DAYS.nyDay || DAYS.seol) {
+    teaPlate(g => { const bowl = mesh(lathe([[0, 0], [.03, 0], [.05, .02], [.06, .045], [.056, .046], [.045, .022], [0, .012]], 40), WHITE, 0, .008, 0, g); const soup = mesh(new THREE.CircleGeometry(.052, 24), std('#efe6d2', .4), 0, .046, 0, g, false); soup.rotation.x = -Math.PI / 2; for (let i = 0; i < 9; i++) { const d = mesh(new THREE.CylinderGeometry(.012, .012, .004, 12), std('#fbf8f0', .5), Math.cos(i * 2.4) * .03, .048, Math.sin(i * 2.4) * .03, g, false); d.rotation.set(rand(-.3, .3), 0, rand(-.3, .3)); } [[.01, .01], [-.02, .015]].forEach(([x, z]) => mesh(new THREE.BoxGeometry(.03, .002, .004), std('#e2b53b'), x, .05, z, g, false)); });
+    lines.push(DAYS.seol ? '설날이에요. 떡국 한 그릇 드시고 한 살 더 빚어 가세요.' : '새해 첫날이에요. 떡국 드셨어요? 찻자리에 한 그릇 있어요.', '새해 덕담 하나: 흙은 서두르면 갈라져요. 천천히 가요.');
+  }
+
+  // ---- 추석 ----
+  if (DAYS.chuseok) {
+    if (typeof moon !== 'undefined') { moon.scale.setScalar(11); }
+    teaPlate(g => { ['#f3efe6', '#cfe0b8', '#f2c7cf', '#e8d79a'].forEach((c, i) => { for (let k = 0; k < 2; k++) { const s = mesh(new THREE.SphereGeometry(.016, 12, 8), std(c, .45), Math.cos(i * 1.6 + k * 3) * .035, .018, Math.sin(i * 1.6 + k * 3) * .035, g, false); s.scale.set(1.5, .8, 1); } }); });
+    banner('한가위', '보름달처럼 넉넉한 하루 되세요', -1.1, 2.66, -3.9, 1.8, '#3f5b46');
+    lines.push('한가위예요. 오늘은 흙도 풍년이에요.', '송편 빚기도 흙 빚기랑 비슷해요. 손 온도가 중요해요.');
+  }
+
+  // ---- 생일 (자판기 11/17 · 케희 3/3) ----
+  if (DAYS.jbday || DAYS.kbday) {
+    const who = DAYS.jbday ? '자판기' : '케희';
+    banner(`HAPPY BIRTHDAY ${who}`, DAYS.jbday ? '오늘은 공방 주인 자판기 생일이에요' : '오늘은 케희 생일이에요', -1.1, 2.66, -3.9, 2.1, '#e8a3ad', '#3a2a28');
+    const cake = new THREE.Group(); cake.position.set(-.38, .386, -.14); teaG.add(cake);
+    mesh(lathe([[0, 0], [.05, 0], [.085, .008], [.09, .014], [0, .01]], 40), WHITE, 0, 0, 0, cake);
+    mesh(new THREE.CylinderGeometry(.06, .06, .05, 32), std('#fbf4ea', .6), 0, .038, 0, cake);
+    mesh(new THREE.CylinderGeometry(.061, .061, .008, 32), std('#e8a3ad', .6), 0, .05, 0, cake);
+    for (let i = 0; i < 6; i++) mesh(new THREE.SphereGeometry(.009, 8, 6), std('#c8382c', .4), Math.cos(i) * .04, .066, Math.sin(i) * .04, cake, false);
+    const FL = [];
+    [-.018, 0, .018].forEach((x, i) => { mesh(new THREE.CylinderGeometry(.003, .003, .03, 6), std(['#7fb3d5', '#e2b53b', '#e8a3ad'][i]), x, .078, i === 1 ? -.01 : .01, cake, false); const f = bulb(x, .1, i === 1 ? -.01 : .01, '#ffd27a', cake, .006); f.scale.y = 1.8; FL.push(f); });
+    const cl = new THREE.PointLight(C('#ffcf8a'), .4, 1.2, 2); cl.position.set(0, .14, 0); cake.add(cl);
+    window.blowCandles = () => { if (!FL[0].visible) { FL.forEach(f => f.visible = true); cl.intensity = .4; return; } FL.forEach(f => f.visible = false); cl.intensity = 0; if (AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 900, .7, .12 * MIX.amb, .02, .5, .1); showHint('후— 촛불이 꺼졌어요. 소원 빌었어요?', 4); setTimeout(() => teacherSay(DAYS.jbday ? '고마워요. 오늘 하루는 쉰소리 안 할게요. 아마도.' : '케희, 생일 축하해요. 오늘 흙은 공짜예요.', 5), 1200); };
+    if (head && DAYS.jbday) { const h = new THREE.Group(); h.position.set(0, .2, 0); head.add(h); const c = mesh(new THREE.ConeGeometry(.08, .2, 16), std('#7fb3d5', .6), 0, .08, 0, h); mesh(new THREE.SphereGeometry(.025, 10, 8), std('#e2b53b', .5), 0, .19, 0, h); for (let i = 0; i < 5; i++) mesh(new THREE.SphereGeometry(.012, 8, 6), std('#fbf5ea'), Math.cos(i * 1.3) * .045, .04 + i * .02, Math.sin(i * 1.3) * .045, h, false); }
+    lines.push(...(DAYS.jbday ? ['오늘 제 생일이에요. 선물은… 흙이면 돼요.', '생일엔 가마도 쉬어요. 거짓말이에요, 오늘도 때요.', '찻자리에 케이크 있어요. 촛불은 같이 꺼요.'] : ['오늘은 케희 생일이에요. 다 같이 축하해요.', '케희, 물고기 뼈 접시 기억나요? 올해도 잘 부탁해요.', '찻자리에 케이크 있어요. 촛불은 케희가 꺼요.']));
+  }
+
+  // 반짝이기
+  requestAnimationFrame(function twk(now) { const t = now / 1000, n = typeof LIGHT !== 'undefined' ? (LIGHT.night || 0) : 0; TW.forEach(b => { const k = .55 + .45 * Math.sin(t * b.sp + b.ph); b.m.material.color.copy(b.c).multiplyScalar(.5 + .5 * k * (.6 + .4 * n)); }); requestAnimationFrame(twk); });
+  // 자판기 특별 대사
+  if (lines.length) {
+    try { lines.forEach(l => TEACH_LINES.push(l, l)); } catch (e) {}
+    $('#enter').addEventListener('click', () => setTimeout(() => teacherSay(lines[0], 6), 9500));
+  }
+})();
+// 찻자리: 생일 케이크 촛불
+{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'tea' && window.blowCandles) ui.acts.append(btn('촛불 끄기', () => window.blowCandles())); }; }
 </script>
 
 
