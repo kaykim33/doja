@@ -5270,6 +5270,115 @@ const DAYS = (() => {
   });
   const ff = window.feedFire; if (typeof feedFire === 'function') { const o = feedFire; feedFire = function () { burst(); burst(); return o.apply(this, arguments); }; }
 })();
+
+// ================= 냉동실 미니게임: 백자 컵 아이스크림 쌓기 =================
+const ICE = (() => {
+  const st = document.createElement('style');
+  st.textContent = `#iceM{position:fixed;inset:0;z-index:60;background:rgba(20,28,34,.55);display:flex;align-items:center;justify-content:center;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom))}
+#iceM .bx{position:relative;width:min(420px,100%);height:min(720px,100%);border-radius:22px;overflow:hidden;background:#dfeef2;box-shadow:0 20px 60px rgba(0,0,0,.35);touch-action:none}
+#iceM canvas{width:100%;height:100%;display:block}
+#iceM .hud{position:absolute;left:0;right:0;top:0;display:flex;justify-content:space-between;align-items:center;padding:12px 14px;font-family:"Gowun Dodum",sans-serif;color:#24323a;pointer-events:none}
+#iceM .hud b{font-family:"Gowun Batang",serif;font-size:26px}
+#iceM .x{pointer-events:auto;border:0;background:rgba(255,255,255,.8);border-radius:14px;height:30px;padding:0 12px;font:inherit;font-size:13px;color:#24323a}
+#iceM .pan{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;font-family:"Gowun Dodum",sans-serif;color:#24323a;background:rgba(232,243,246,.86)}
+#iceM .pan h2{margin:0;font-family:"Gowun Batang",serif;font-size:26px}
+#iceM .pan .say{font-size:14px;color:#4b5a62;max-width:30ch}
+#iceM .pan .go{border:0;border-radius:22px;height:44px;padding:0 26px;background:#24323a;color:#fff;font:inherit;font-size:16px}
+#iceM .board{width:100%;max-width:260px;font-size:13.5px;text-align:left;border-top:1px solid rgba(36,50,58,.15);padding-top:8px}
+#iceM .board div{display:flex;justify-content:space-between;padding:3px 0;font-variant-numeric:tabular-nums}`;
+  document.head.appendChild(st);
+  const SAY_START = ['힐링게임인데 정말 하시려고요?', '냉동실은 원래 이러라고 있는 데가 아닌데요.', '흙멍하러 와서 기록 경쟁이라니… 네, 저도 해 봤어요.', '한 판만 하실 거죠. 다 알아요.', '백자 컵에 아이스크림이라니. 컵이 좀 놀랄 거예요.'];
+  const SAY_END = h => h >= 15 ? pick(['기록 깨셨네요. 이제 차 한 잔 하세요, 제발.', '그 정도면 아이스크림 장인이에요. 흙은요?', '1등이라니. 오늘 흙은 안 만지셨잖아요.']) : h >= 6 ? pick([`${h}단이요? 김탄도 그 정도는 쌓아요.`, '나쁘지 않아요. 손 시리죠? 가마 앞에서 녹이고 오세요.', '한 판만 더 하실 거죠. 다 알아요.']) : pick(['힐링이 잘 안 되시네요.', '아이스크림이 컵을 별로 안 좋아하나 봐요.', '괜찮아요. 흙은 안 녹아요.']);
+  const FLAV = [['바닐라', '#f6eedb'], ['녹차', '#b7cf8e'], ['딸기', '#f2b7c0'], ['초코', '#7a5240'], ['흑임자', '#5b5652'], ['고구마', '#e3b35c'], ['소다', '#a9d8e6']];
+  const kst = () => new Date(Date.now() + 9 * 3600e3);
+  const weekKey = () => { const d = kst(), t = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())), day = (t.getUTCDay() + 6) % 7; t.setUTCDate(t.getUTCDate() - day + 3); const y = t.getUTCFullYear(), w1 = new Date(Date.UTC(y, 0, 4)); return `ice-${y}w${1 + Math.round(((t - w1) / 864e5 - 3 + ((w1.getUTCDay() + 6) % 7)) / 7)}`; };
+  let wrap = null, cv, g, W = 0, H = 0, dpr = 1, raf = 0, G = null;
+  const best = () => { try { return +localStorage.getItem('soyoho_ice_best') || 0; } catch (e) { return 0; } };
+  const setBest = v => { try { localStorage.setItem('soyoho_ice_best', String(v)); } catch (e) {} };
+  async function db() { try { return await window.claude.use('db'); } catch (e) { return null; } }
+  async function myId() { try { const u = await window.claude.use('user'); return u ? await u.id() : null; } catch (e) { return null; } }
+  async function board() { const d = await db(); if (!d) return []; try { const q = await d.collection(weekKey()).orderBy('h', 'desc').limit(5).get(); return q.docs.map(x => x.data()); } catch (e) { return []; } }
+  async function submit(h) { const d = await db(), id = await myId(); if (!d || !id) return; try { const ref = d.doc(weekKey() + '/' + id); const s = await ref.get(); if (s.exists && (s.data().h || 0) >= h) return; await ref.set({ h, nick: String(S.nick || '손님').slice(0, 10), at: Date.now() }); } catch (e) {} }
+  function el2(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  function open() {
+    if (wrap) return; closeSheet && closeSheet();
+    wrap = el2('div'); wrap.id = 'iceM'; const bx = el2('div', 'bx'); wrap.append(bx); cv = document.createElement('canvas'); bx.append(cv); g = cv.getContext('2d');
+    const hud = el2('div', 'hud', '<span><b id="iceH">0</b> 단</span>'); const x = el2('button', 'x', '닫기'); x.type = 'button'; x.onclick = close; hud.append(x); bx.append(hud);
+    document.body.append(wrap);
+    const fit = () => { const r = bx.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1); W = r.width; H = r.height; cv.width = W * dpr; cv.height = H * dpr; g.setTransform(dpr, 0, 0, dpr, 0, 0); };
+    fit(); addEventListener('resize', fit); wrap._fit = fit;
+    const move = e => { if (!G) return; const r = cv.getBoundingClientRect(); G.tx = clamp(e.clientX - r.left, 40, W - 40); };
+    cv.addEventListener('pointerdown', e => { move(e); cv.setPointerCapture(e.pointerId); }); cv.addEventListener('pointermove', e => { if (e.buttons || e.pointerType === 'touch') move(e); });
+    wrap._key = e => { if (!G) return; if (e.key === 'ArrowLeft') G.tx = clamp(G.tx - 40, 40, W - 40); if (e.key === 'ArrowRight') G.tx = clamp(G.tx + 40, 40, W - 40); }; addEventListener('keydown', wrap._key);
+    menu(pick(SAY_START), true);
+    try { teacherSay('냉동실이요? …힐링게임인데 정말 하시려고요?', 4); } catch (e) {}
+  }
+  function close() { if (!wrap) return; cancelAnimationFrame(raf); removeEventListener('resize', wrap._fit); removeEventListener('keydown', wrap._key); wrap.remove(); wrap = null; G = null; }
+  async function menu(say, first, h) {
+    const bx = wrap.querySelector('.bx'); const old = bx.querySelector('.pan'); if (old) old.remove();
+    const p = el2('div', 'pan'); p.append(el2('h2', null, first ? '백자 컵 아이스크림 쌓기' : `${h}단!`));
+    p.append(el2('div', 'say', `자판기: “${esc(say)}”`));
+    if (first) p.append(el2('div', 'say', '컵을 좌우로 움직여 떨어지는 아이스크림을 받아요. 한쪽으로 기울면 와르르. 놓치면 눈송이가 하나씩 줄어요.'));
+    p.append(el2('div', 'say', `내 최고 기록 ${best()}단`));
+    const bd = el2('div', 'board', '<div style="color:#4b5a62"><span>이번 주 기록판</span><span>불러오는 중…</span></div>'); p.append(bd);
+    const go = el2('button', 'go', first ? '시작' : '한 판 더'); go.type = 'button'; go.onclick = () => { p.remove(); start(); }; p.append(go);
+    bx.append(p); drawIdle();
+    const L = await board(); bd.innerHTML = '<div style="color:#4b5a62"><span>이번 주 기록판</span><span>단</span></div>' + (L.length ? L.map((r, i) => `<div><span>${i + 1}. ${esc(String(r.nick || '손님'))}</span><span>${+r.h || 0}</span></div>`).join('') : '<div><span>아직 아무도 없어요. 1등 할 기회!</span><span></span></div>');
+  }
+  function start() {
+    G = { cup: W / 2, tx: W / 2, stack: [], fall: null, t: 0, lives: 3, speed: 160, over: false, cam: 0, sway: 0, swayV: 0, wob: 0, pops: [] };
+    spawn(); let last = performance.now();
+    const loop = now => { const dt = Math.min(.04, (now - last) / 1000); last = now; step(dt); draw(); if (G && !G.done) raf = requestAnimationFrame(loop); };
+    raf = requestAnimationFrame(loop);
+  }
+  const R = () => Math.max(22, Math.min(30, W * .07));
+  function spawn() { const f = pick(FLAV); G.fall = { x: rand(50, W - 50), y: -40 - G.cam, c: f[1], vx: rand(-20, 20) * Math.min(1, G.stack.length / 8) }; }
+  function topY() { const base = H - 90; return base - 46 - G.stack.length * R() * 1.35; }
+  function com() { if (!G.stack.length) return 0; let s = 0; G.stack.forEach(o => s += o.dx); return s / G.stack.length; }
+  function step(dt) {
+    if (!G || G.over) return; G.t += dt;
+    G.cup += (G.tx - G.cup) * Math.min(1, dt * 14);
+    const r = R(), f = G.fall; f.y += (G.speed + G.stack.length * 9) * dt; f.x = clamp(f.x + f.vx * dt, 30, W - 30);
+    const ty = topY(), topX = G.cup + (G.stack.length ? G.stack[G.stack.length - 1].dx : 0);
+    if (f.y >= ty - r * .6 && f.y < ty + r) {
+      const off = f.x - topX;
+      if (Math.abs(off) < r * 1.15) { const prev = G.stack.length ? G.stack[G.stack.length - 1].dx : 0; G.stack.push({ dx: prev + off * .85, c: f.c }); G.swayV += off * .02; plop(G.stack.length); const el = document.getElementById('iceH'); if (el) el.textContent = G.stack.length;
+        const lim = 34 + Math.min(14, G.stack.length * .4); if (Math.abs(com()) > lim) return topple();
+        G.camT = Math.max(0, H * .42 - topY()); spawn(); return; }
+    }
+    if (f.y > H + 60 - G.cam) { G.lives--; miss(); if (G.lives <= 0) return topple(true); spawn(); }
+    G.cam += ((G.camT || 0) - G.cam) * Math.min(1, dt * 3);
+    G.swayV += (-G.sway * 6 - G.swayV * 2.2 + com() * .02) * dt; G.sway += G.swayV * dt;
+    G.pops = G.pops.filter(p => (p.t -= dt) > 0);
+  }
+  function topple(missed) {
+    G.over = true; const h = G.stack.length; if (h > best()) setBest(h); submit(h);
+    if (AU && AU.ctx) { const n = AU.ctx.currentTime; noiseHit(n, 'lowpass', 500, .8, .3 * MIX.amb, .01, .5, .2); tone(n + .05, 200, .08 * MIX.amb, .01, .4, 'sine', .3, (p, tt) => p.exponentialRampToValueAtTime(80, tt + .4)); }
+    let k = 0; const fallAnim = () => { k += .04; G.sway += (G.sway >= 0 ? 1 : -1) * .025 * k; draw(); if (k < 1.2) raf = requestAnimationFrame(fallAnim); else { G.done = true; menu(missed ? '아이스크림을 다 떨어뜨렸어요. ' + SAY_END(h) : SAY_END(h), false, h); } };
+    raf = requestAnimationFrame(fallAnim);
+  }
+  function plop(n) { if (!AU || !AU.ctx) return; const t = AU.ctx.currentTime; tone(t, 380 + n * 12, .07 * MIX.amb, .003, .12, 'sine', .3); noiseHit(t, 'lowpass', 900, .7, .05 * MIX.amb, .002, .05, .1); if (n % 5 === 0) tone(t + .08, 1200, .03 * MIX.amb, .002, .3, 'sine', .4); }
+  function miss() { if (!AU || !AU.ctx) return; const t = AU.ctx.currentTime; noiseHit(t, 'bandpass', 600, 1, .08 * MIX.amb, .002, .15, .1); }
+  function bg() { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#cfe6ee'); gr.addColorStop(1, '#eef6f6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 26; i++) { const x = (i * 97) % W, y = (i * 53 + (G ? G.cam * .3 : 0)) % H; g.beginPath(); g.arc(x, y, 1.6 + (i % 3), 0, TAU); g.fill(); } g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(0, H - 70, W, 70); g.fillStyle = 'rgba(160,190,200,.35)'; g.fillRect(0, H - 72, W, 2); }
+  function cupAt(x, y) { const w = 64, h = 50; g.save(); g.translate(x, y); g.fillStyle = 'rgba(0,0,0,.08)'; g.beginPath(); g.ellipse(0, h / 2 + 4, w * .5, 6, 0, 0, TAU); g.fill();
+    const gr = g.createLinearGradient(-w / 2, 0, w / 2, 0); gr.addColorStop(0, '#e9ece9'); gr.addColorStop(.35, '#ffffff'); gr.addColorStop(1, '#d9dedb'); g.fillStyle = gr; g.beginPath(); g.moveTo(-w / 2, -h / 2); g.lineTo(w / 2, -h / 2); g.lineTo(w * .36, h / 2); g.lineTo(-w * .36, h / 2); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(80,90,95,.25)'; g.lineWidth = 1.2; g.stroke(); g.fillStyle = '#f4f6f4'; g.beginPath(); g.ellipse(0, -h / 2, w / 2, 6, 0, 0, TAU); g.fill(); g.stroke(); g.strokeStyle = 'rgba(44,79,154,.55)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-w * .42, -h * .18); g.lineTo(w * .42, -h * .18); g.stroke(); g.restore(); }
+  function scoop(x, y, c, r) { g.fillStyle = 'rgba(0,0,0,.06)'; g.beginPath(); g.ellipse(x, y + r * .7, r * .9, r * .25, 0, 0, TAU); g.fill(); g.fillStyle = c; g.beginPath(); g.arc(x, y, r, Math.PI * .95, Math.PI * 2.05); for (let i = 0; i <= 6; i++) { const a = i / 6; g.lineTo(x + r * (1 - 2 * a), y + r * .25 + (i % 2 ? r * .28 : 0)); } g.closePath(); g.fill(); g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(x - r * .35, y - r * .4, r * .28, r * .16, -.5, 0, TAU); g.fill(); }
+  function drawIdle() { if (!g) return; bg(); cupAt(W / 2, H - 90); scoop(W / 2, H - 90 - 46, '#f6eedb', R()); }
+  function draw() {
+    if (!G) return; const r = R(); bg(); g.save(); g.translate(0, G.cam);
+    const bx = G.cup, by = H - 90; g.save(); g.translate(bx, by + 25); g.rotate(G.sway * .02 * Math.min(1, G.stack.length / 6)); g.translate(-bx, -(by + 25));
+    cupAt(bx, by); G.stack.forEach((o, i) => scoop(bx + o.dx, by - 46 - i * r * 1.35, o.c, r));
+    g.restore();
+    if (!G.over && G.fall) scoop(G.fall.x, G.fall.y, G.fall.c, r);
+    g.restore();
+    g.fillStyle = '#24323a'; g.font = '14px "Gowun Dodum", sans-serif'; g.textAlign = 'right'; g.fillText('❄'.repeat(Math.max(0, G.lives)), W - 70, 32);
+  }
+  return { open, close, get g() { return G; } };
+})();
+// 냉동실 문을 누르면 미니게임
+{ const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click; if (c && c.act === 'freezer') { const near = S.mode !== 'walk' || Math.hypot(WALK.x - FRIDGE.x, WALK.z - (FRIDGE.z - .7)) < 1.6; if (near) { ICE.open(); return; } WALK.goal = { x: FRIDGE.x, z: FRIDGE.z - .75, run: () => ICE.open() }; markGoal(FRIDGE.x, FRIDGE.z - .75); return; } return tf.apply(this, arguments); }; }
+{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'freezer', x: FRIDGE.x + .5, z: FRIDGE.z - .8, r: .45, text: '냉동실 열기 (아이스크림 쌓기)', run: () => ICE.open() }); return Z; }; }
 </script>
 
 

@@ -36,6 +36,7 @@ function canWrite(op, coll, id, admin, data) {
   if (admin) return true;
   if (top === 'gallery' || top === 'tiles') return op === 'add' && JSON.stringify(data || {}).length <= LIMITS[top];
   if (top === 'visits') return (op === 'set' || op === 'update') && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(data || {}).length <= LIMITS.visits;
+  if (/^ice-\d{4}w\d{1,2}$/.test(top) && coll === top) { const d = data || {}; return op === 'set' && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 300 && Number.isInteger(d.h) && d.h >= 0 && d.h <= 500; }
   return false;
 }
 
