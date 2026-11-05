@@ -88,7 +88,7 @@ export async function onRequest(ctx) {
     const hash = async c => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('doja-door:' + c)))].map(x => x.toString(16).padStart(2, '0')).join('');
     const cur = await getDoc(env, 'secret/door');
     if (b.set) { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^\d{4}$/.test(code)) return J({ error: 'bad_code' }, 400); await putDoc(env, 'secret/door', { h: await hash(code), at: Date.now() }); return J({ ok: true, set: true }); }
-    if (!cur || !cur.h) return J({ ok: false, set: false });
+    if (!cur || !cur.h || !admin) return J({ ok: false, set: false }); // 지금은 관리자만 들어갈 수 있어요
     await new Promise(r => setTimeout(r, 400));
     return J({ ok: /^\d{4}$/.test(code) && (await hash(code)) === cur.h, set: true });
   }

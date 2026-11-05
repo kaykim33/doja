@@ -5975,7 +5975,7 @@ const SECRET = (() => {
 })();
 // 벽 충돌 · 문 통과
 { const cf = collide; collide = function (x, z) {
-  const dx = Math.abs(x - FDOOR.P.x), open = FDOOR.open > .55, inS = WALK.z > 4.0;
+  const dx = Math.abs(x - FDOOR.P.x), open = FDOOR.open > .55 && !!(BOARD && BOARD.admin) || (FDOOR.open > .55 && WALK.z > 4.0), inS = WALK.z > 4.0;
   if (inS || (z > 3.75 && dx < .4 && open)) {
     if (z < SR.z0 + .15) { if (!open || dx > .36) { if (inS) z = SR.z0 + .15; else return cf(x, z); } x = clamp(x, FDOOR.P.x - .3, FDOOR.P.x + .3); if (z < 3.7) return cf(x, z); return [x, z]; }
     x = clamp(x, SR.x0 + .25, SR.x1 - .25); z = clamp(z, SR.z0 + .15, SR.z1 - .25); const pr = .22;
@@ -5994,8 +5994,9 @@ const SECRET = (() => {
 { let last = performance.now(), wasIn = false; (function tk(now) { requestAnimationFrame(tk); last = now;
   const gl = WALK.goal; if (gl && !gl.via && gl.z > SR.z0 && WALK.z < 3.9 && FDOOR.open > .3) { WALK.goal = { x: FDOOR.P.x, z: 3.75, via: true, run: () => { WALK.goal = Object.assign({}, gl, { via: true }); } }; }
   if (gl && !gl.via && gl.z < 3.9 && WALK.z > 4.0) { if (FDOOR.open < .3) FDOOR.unlock(); WALK.goal = { x: FDOOR.P.x, z: 4.5, via: true, run: () => { WALK.goal = Object.assign({}, gl, { via: true }); } }; }
-  const inS = WALK.z > 4.0; if (inS && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 4000; // 안에 있거나 문틀에 있으면 닫히지 않게
-  if (Math.abs(WALK.x - FDOOR.P.x) < .5 && WALK.z > 3.4 && WALK.z < 4.6 && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 3000;
+  const inS = WALK.z > 4.0;
+  if (Math.abs(WALK.x - FDOOR.P.x) < .5 && WALK.z > 3.4 && WALK.z < SR.z0 + .55 && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 2500; // 문간에 서 있으면 기다려요
+  if (WALK.z > SR.z0 + .55 && FDOOR.target) { FDOOR.target = 0; FDOOR.closeAt = 0; setTimeout(() => { if (AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t, 'lowpass', 260, .8, .09 * MIX.amb, .003, .12, .1); tone(t + .1, 1400, .02 * MIX.amb, .002, .05, 'square', .2); tone(t + .17, 1100, .02 * MIX.amb, .002, .05, 'square', .2); } }, 700); } // 들어가면 바로 닫고 잠가요
   if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('자판기의 비밀 작업실이에요. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
   SR.lamp.intensity = 1.2 + Math.sin(now / 900) * .04 + (Math.random() < .004 ? -.5 : 0); })(last); }
 { const zf = zones; zones = function () { const Z = zf(); if (WALK.z > 4.0) { Object.entries(SR.spots).forEach(([id, p]) => Z.push({ id: 'secret', x: p[0], z: p[1], r: .45, text: { note: '노트 보기', pile: '실패작 더미', bowl: '첫 그릇', photo: '사진 보기', tiles: '유약 견본판', chest: '잠긴 상자', door2: '초록 문' }[id], run: () => SECRET.show(id) })); Z.push({ id: 'out', x: FDOOR.P.x, z: SR.z0 + .35, r: .45, text: '공방으로 나가기', run: () => FDOOR.unlock() }); } return Z; }; }
