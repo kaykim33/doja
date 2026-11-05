@@ -44,8 +44,8 @@ function canWrite(op, coll, id, admin, data) {
 // 키 없을 땐 Open-Meteo(무료·무키) 대구 현재 날씨
 async function refreshOpenMeteo(env) {
   try {
-    const j = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.8714&longitude=128.6014&current=temperature_2m,weather_code,cloud_cover&timezone=Asia%2FSeoul')).json();
-    const c = j.current || {}, w = +c.weather_code, cc = +c.cloud_cover, temp = +(+c.temperature_2m).toFixed(1);
+    const j = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.8714&longitude=128.6014&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul')).json();
+    const c = j.current || {}, w = +c.weather_code, cc = +c.cloud_cover, temp = +(+c.temperature_2m).toFixed(1), wind = +(+c.wind_speed_10m || 0).toFixed(1);
     if (!isFinite(temp)) return;
     let pty = 'none';
     if ([56, 57, 66, 67].includes(w)) pty = 'sleet';
@@ -53,7 +53,7 @@ async function refreshOpenMeteo(env) {
     else if (w >= 80 && w <= 82) pty = 'shower';
     else if ((w >= 51 && w <= 65) || w >= 95) pty = 'rain';
     const sky = w === 3 || w === 45 || w === 48 || cc >= 80 ? '흐림' : (w === 2 || cc >= 40) ? '구름많음' : '맑음';
-    await putDoc(env, 'weather/daegu', { sky, pty, temp, at: (c.time || '').slice(0, 16) + ':00+09:00', source: 'open-meteo', fetched: Date.now() });
+    await putDoc(env, 'weather/daegu', { sky, pty, temp, wind, at: (c.time || '').slice(0, 16) + ':00+09:00', source: 'open-meteo', fetched: Date.now() });
   } catch (e) {}
 }
 async function refreshWeather(env) {
@@ -65,12 +65,12 @@ async function refreshWeather(env) {
   try {
     const n = await (await fetch(q('getUltraSrtNcst', hh + '00'))).json(); const items = n.response.body.items.item;
     const v = c => (items.find(x => x.category === c) || {}).obsrValue;
-    const ptyN = +v('PTY'), temp = +(+v('T1H')).toFixed(1);
+    const ptyN = +v('PTY'), temp = +(+v('T1H')).toFixed(1), wind = +(+v('WSD') || 0).toFixed(1);
     let sky = '맑음';
     try { const f = await (await fetch(q('getUltraSrtFcst', hh + '30'))).json(); const s = f.response.body.items.item.filter(x => x.category === 'SKY').sort((a, b) => (a.fcstDate + a.fcstTime).localeCompare(b.fcstDate + b.fcstTime))[0]; sky = { 1: '맑음', 3: '구름많음', 4: '흐림' }[+s.fcstValue] || '맑음'; } catch (e) {}
     const pty = { 0: 'none', 1: 'rain', 2: 'sleet', 3: 'snow', 5: 'rain', 6: 'sleet', 7: 'snow' }[ptyN] || 'none';
     const at = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}T${hh}:00:00+09:00`;
-    if (isFinite(temp)) await putDoc(env, 'weather/daegu', { sky, pty, temp, at, source: '기상청 초단기실황', fetched: Date.now() }); else await refreshOpenMeteo(env);
+    if (isFinite(temp)) await putDoc(env, 'weather/daegu', { sky, pty, temp, wind, at, source: '기상청 초단기실황', fetched: Date.now() }); else await refreshOpenMeteo(env);
   } catch (e) { await refreshOpenMeteo(env); }
 }
 

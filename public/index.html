@@ -242,7 +242,7 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 scene.background = C('#dfe6e4');
 const camera = new THREE.PerspectiveCamera(50, 1, 0.02, 220);
-const timeU = { value: 0 }, windU = { value: 0.6 };
+const timeU = { value: 0 }, windU = { value: 0.6 }; var WINDF = 1;
 
 function std(color, rough = 0.8, o = {}) { return new THREE.MeshStandardMaterial(Object.assign({ color: C(color), roughness: rough, metalness: 0 }, o)); }
 function mesh(geo, mat, x = 0, y = 0, z = 0, parent = scene, shadow = true) {
@@ -756,7 +756,7 @@ function audioTick(dt, st) {
   if (!AU.ctx || AU.ctx.state !== 'running') return;
   const ctx = AU.ctx, now = ctx.currentTime, F0 = AU.focus, F = { room: F0.room * MIX.amb, wind: F0.wind * MIX.wind, fire: F0.fire * MIX.fire, water: F0.water * MIX.water, wheel: F0.wheel * MIX.wheel }; F.wind *= OUTK * JDUCK; F.water *= OUTK * (.5 + .5 * JDUCK);
   const set = (n, v, tc = .4) => AU.nodes[n].g.gain.setTargetAtTime(v, now, tc);
-  const gust = .55 + .45 * Math.sin(now * .23) * Math.sin(now * .071 + 1) + (st.windBoost || 0);
+  const gust = (.55 + .45 * Math.sin(now * .23) * Math.sin(now * .071 + 1)) * WINDF + (st.windBoost || 0);
   set('room', .08 * F.room); set('wind', AU.nodes.wind.base * F.wind * gust); set('wind2', AU.nodes.wind2.base * F.wind * gust);
   AU.nodes.wind.f.frequency.setTargetAtTime(500 + gust * 500, now, .5);
   set('fire', .75 * F.fire * st.fireLvl); set('water', .045 * F.water);
@@ -1835,7 +1835,7 @@ function frame(now) {
   // 바람
   const gust = .55 + .35 * Math.sin(t * .23) * Math.sin(t * .071 + 1);
   S.windBoost = S.breath ? (Math.sin(t * TAU / 10) * .5 + .5) * .6 : 0;
-  windU.value = (S.station === 'wind' ? .9 : .6) * gust + S.windBoost;
+  windU.value = (S.station === 'wind' ? .9 : .6) * gust * WINDF + S.windBoost;
   // 물레 회전
   const workW = myWheelObj && ['throw', 'trim', 'stamp'].includes(S.mode);
   wheels.forEach(w => { const sp = (w === myWheelObj && workW) ? S.spin : [...MP.peers.values()].some(a => a.potM.parent === w.potRoot) ? .5 : 0; w.head.rotation.y += sp * dt * 9 * (w === myWheelObj && S.mode !== 'trim' ? -1 : 1) /* 물레질 시계, 굽 깎기 반시계 */; if (w === myWheelObj) wheelRot = w.head.rotation.y; });
@@ -2871,11 +2871,11 @@ function kmaApply(d) {
   const at = Date.parse(d.at || ''); if (!isFinite(at)) return;
   const sky = String(d.sky || '').slice(0, 12), pty = ['none', 'rain', 'shower', 'sleet', 'snow'].includes(d.pty) ? d.pty : 'none';
   const temp = isFinite(+d.temp) ? Math.round(+d.temp * 10) / 10 : null;
-  Object.assign(KMA, { at, sky, temp, pty, src: d.source || '', snowOn: pty === 'snow' || pty === 'sleet', wet: pty === 'none' ? 0 : pty === 'shower' ? .8 : 1, cloud: /흐림/.test(sky) ? .9 : /구름/.test(sky) ? .45 : pty !== 'none' ? .9 : 0 });
+  Object.assign(KMA, { at, sky, temp, pty, src: d.source || '', wind: isFinite(+d.wind) ? +d.wind : null, snowOn: pty === 'snow' || pty === 'sleet', wet: pty === 'none' ? 0 : pty === 'shower' ? .8 : 1, cloud: /흐림/.test(sky) ? .9 : /구름/.test(sky) ? .45 : pty !== 'none' ? .9 : 0 });
   updatePlaceChip();
   if (!KMA.announced && kmaFresh() && WTH.mode === 'kma' && KMA.wet > 0) { KMA.announced = true; setTimeout(() => { if (S.mode !== 'title') toast(KMA.snowOn ? '대구에 눈이 와요. 공방 창밖에도요.' : '대구에 비가 와요. 공방 창밖에도요.'); }, 5000); }
 }
-function kmaText() { if (!kmaFresh()) return ''; return `대구 ${KMA.temp != null ? KMA.temp + '℃ ' : ''}${KMA.pty === 'none' ? KMA.sky : { rain: '비', shower: '소나기', sleet: '진눈깨비', snow: '눈' }[KMA.pty]}`; }
+function kmaText() { if (!kmaFresh()) return ''; return `대구 ${KMA.temp != null ? KMA.temp + '℃ ' : ''}${KMA.pty === 'none' ? KMA.sky : { rain: '비', shower: '소나기', sleet: '진눈깨비', snow: '눈' }[KMA.pty]}${KMA.wind != null ? ' · 바람 ' + KMA.wind + 'm/s' : ''}`; }
 function kmaLine() { if (!kmaFresh()) return '대구 날씨를 아직 받지 못했어요. 그동안은 가끔 비가 와요.'; const d = new Date(KMA.at); return `${kmaText()} · ${KMA.src === 'open-meteo' ? '실시간' : '기상청'} ${d.getHours()}시 기준`; }
 function updatePlaceChip() { updatePlaceChip_old(); const t = kmaText(); if (t) { const s = el('small'); s.textContent = ' · ' + t; ui.place.append(s); } }
 (async () => {
@@ -5379,6 +5379,49 @@ const ICE = (() => {
 // 냉동실 문을 누르면 미니게임
 { const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click; if (c && c.act === 'freezer') { const near = S.mode !== 'walk' || Math.hypot(WALK.x - FRIDGE.x, WALK.z - (FRIDGE.z - .7)) < 1.6; if (near) { ICE.open(); return; } WALK.goal = { x: FRIDGE.x, z: FRIDGE.z - .75, run: () => ICE.open() }; markGoal(FRIDGE.x, FRIDGE.z - .75); return; } return tf.apply(this, arguments); }; }
 { const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'freezer', x: FRIDGE.x + .5, z: FRIDGE.z - .8, r: .45, text: '냉동실 열기 (아이스크림 쌓기)', run: () => ICE.open() }); return Z; }; }
+
+/* ── 실제 대구 바람·기온 ── */
+(() => {
+  const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
+  const tint = document.createElement('div'); tint.id = 'tempTint'; document.body.append(tint);
+  const G0 = { c: GLASSM.color.clone(), o: GLASSM.opacity };
+  const puffTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'), gr = x.createRadialGradient(32, 32, 2, 32, 32, 30); gr.addColorStop(0, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+  const puffs = []; for (let i = 0; i < 24; i++) { const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.visible = false; sp.name = 'puff'; scene.add(sp); puffs.push({ sp, t: 0, life: 0, v: V3(0, 0, 0) }); }
+  let pi = 0; const breathers = new Map(); let headH = null, toldW = false, toldT = false;
+  function puff(av) {
+    if (headH == null) { const b = new THREE.Box3().setFromObject(av); headH = b.isEmpty() ? .9 : (b.max.y - b.min.y) * .82; }
+    const p = puffs[pi++ % puffs.length], fw = V3(0, 0, 1).applyQuaternion(av.getWorldQuaternion(new THREE.Quaternion()));
+    av.getWorldPosition(p.sp.position); p.sp.position.y += headH; p.sp.position.addScaledVector(fw, .12);
+    p.v.copy(fw).multiplyScalar(.22); p.v.y = .38; p.v.x += (WINDF - 1) * .08; p.t = 0; p.life = 1.6; p.sp.visible = true;
+  }
+  let last = performance.now();
+  function tick(now) {
+    requestAnimationFrame(tick); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const fresh = kmaFresh(), T = fresh && KMA.temp != null ? KMA.temp : null, W = fresh && KMA.wind != null ? KMA.wind : null;
+    // 바람: 0m/s → .55배, 3m/s → 1배, 8m/s 이상 → 2배
+    const wt = W == null ? 1 : Math.max(.55, Math.min(2, .55 + W * .16));
+    WINDF += (wt - WINDF) * Math.min(1, dt * .5);
+    // 기온: 창 김서림, 화면 온도감
+    const cold = T == null ? 0 : Math.max(0, Math.min(1, (6 - T) / 10)), hot = T == null ? 0 : Math.max(0, Math.min(1, (T - 27) / 7));
+    GLASSM.opacity = G0.o + cold * .22; GLASSM.color.copy(G0.c).lerp(C('#ffffff'), cold * .8);
+    tint.style.opacity = cold > .05 ? (cold * .5).toFixed(2) : hot > .05 ? (hot * .6).toFixed(2) : 0;
+    tint.style.background = cold > .05 ? 'radial-gradient(ellipse at 50% 120%,rgba(255,255,255,0),rgba(190,215,235,.35))' : 'radial-gradient(ellipse at 50% 0%,rgba(255,200,120,.28),rgba(255,170,90,0) 70%)';
+    // 추운 날 바깥에서 입김
+    if (T != null && T <= 7 && S.mode !== 'title') {
+      const outs = []; if (me && me.visible) { const p = me.getWorldPosition(V3(0, 0, 0)); if (p.z < -4.05) outs.push(['me', me]); }
+      MP.peers.forEach((a, k) => { if (a.av && a.av.visible && a.av.position.z < -4.05) outs.push([k, a.av]); });
+      const every = T <= 0 ? 2.4 : 3.4;
+      outs.forEach(([k, av]) => { const n = (breathers.get(k) ?? Math.random() * every) - dt; if (n <= 0) { puff(av); breathers.set(k, every + Math.random() * .8); } else breathers.set(k, n); });
+    }
+    puffs.forEach(p => { if (!p.sp.visible) return; p.t += dt; const k = p.t / p.life; if (k >= 1) { p.sp.visible = false; return; } p.sp.position.addScaledVector(p.v, dt); p.v.multiplyScalar(1 - dt * .8); const s = .07 + k * .32; p.sp.scale.set(s, s, s); p.sp.material.opacity = .7 * Math.sin(Math.PI * Math.min(1, k * 1.3)) * (1 - k); });
+    // 들어올 때 한 마디
+    if (S.mode !== 'title' && fresh) {
+      if (!toldW && W != null && W >= 7) { toldW = true; setTimeout(() => toast(`대구에 바람이 세요(${W}m/s). 조릿대가 바빠요.`), 9000); }
+      if (!toldT && T != null && (T <= 0 || T >= 30)) { toldT = true; setTimeout(() => toast(T <= 0 ? `대구 ${T}℃. 밖에 나가면 입김이 나요. 가마 곁이 명당이에요.` : `대구 ${T}℃. 분수 곁에서 쉬어 가세요.`), 14000); }
+    }
+  }
+  requestAnimationFrame(tick);
+})();
 </script>
 
 
