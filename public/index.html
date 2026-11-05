@@ -4728,7 +4728,7 @@ function openAdmin() {
   openAdmin_v(); if (!BOARD.admin || !VISIT.db) return;
   const box = ad.querySelector('.box'); if (!box) return;
   const sec = el('div', 'sec'); sec.append(el('h3', null, '방문 기록'));
-  const note = el('p'); note.style.cssText = 'font-size:12px;color:var(--ink-2);margin:2px 0 8px'; note.textContent = '이 사이트에 들어온 모든 사람을 브라우저 기준으로 세요. 이름은 공방에서 정한 닉네임으로 보여요.';
+  const note = el('p'); note.style.cssText = 'font-size:12px;color:var(--ink-2);margin:2px 0 8px'; note.textContent = '최근에 들어온 사람이 맨 위예요. 브라우저 기준으로 세고, 이름은 공방 닉네임이에요.';
   const out = el('div'); out.textContent = '불러오는 중…'; sec.append(note, out);
   box.insertBefore(sec, box.children[2] || null);
   (async () => {
@@ -4737,14 +4737,16 @@ function openAdmin() {
       const today = dayKey(), week = [...Array(7)].map((_, i) => dayKey(new Date(Date.now() - i * 864e5)));
       const ps = rows.length ? await VISIT.user.profiles(rows.map(r => r.id)) : {};
       const nm = r => { const n = (ps[r.id] && ps[r.id].name) || ''; const nk = String(r.d.nick || ''); return n ? (nk && nk !== n ? `${n} (${nk})` : n) : (nk || '누군가'); };
-      const tRows = rows.map(r => ({ r, n: Number((r.d.days || {})[today]) || 0, w: week.reduce((a, k) => a + (Number((r.d.days || {})[k]) || 0), 0) })).filter(x => x.w > 0).sort((a, b) => b.n - a.n || b.w - a.w);
+      const tRows = rows.map(r => ({ r, n: Number((r.d.days || {})[today]) || 0, w: week.reduce((a, k) => a + (Number((r.d.days || {})[k]) || 0), 0) })).filter(x => x.w > 0).sort((a, b) => (Number(b.r.d.last) || 0) - (Number(a.r.d.last) || 0));
       out.innerHTML = '';
       const tot = tRows.reduce((a, x) => a + x.n, 0), ppl = tRows.filter(x => x.n > 0).length;
       const h = el('div'); h.style.cssText = 'font-weight:700;margin-bottom:6px'; h.textContent = `오늘 ${ppl}명 · ${tot}번 방문`; out.append(h);
       if (!tRows.length) { const p = el('div'); p.textContent = '최근 7일 동안 기록된 방문이 없어요.'; out.append(p); return; }
       tRows.forEach(x => { const row = el('div'); row.style.cssText = 'display:flex;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px';
-        const a = el('span'); a.textContent = nm(x.r); const b = el('span'); const lt = x.r.d.last ? new Date(x.r.d.last) : null;
-        b.textContent = `오늘 ${x.n}번 · 7일 ${x.w}번${lt ? ` · 마지막 ${lt.getMonth() + 1}/${lt.getDate()} ${String(lt.getHours()).padStart(2, '0')}:${String(lt.getMinutes()).padStart(2, '0')}` : ''}`; b.style.color = 'var(--ink-2)';
+        const a = el('span'); const lt = x.r.d.last ? new Date(x.r.d.last) : null;
+        const ago = lt ? (m => m < 1 ? '방금' : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`)(Math.floor((Date.now() - lt) / 60000)) : '';
+        a.innerHTML = `<b>${esc(nm(x.r))}</b> <span style="color:var(--ink-2)">${ago}</span>`;
+        const b = el('span'); b.textContent = `${lt ? `${lt.getMonth() + 1}/${lt.getDate()} ${String(lt.getHours()).padStart(2, '0')}:${String(lt.getMinutes()).padStart(2, '0')} · ` : ''}오늘 ${x.n} · 7일 ${x.w}`; b.style.cssText = 'color:var(--ink-2);font-variant-numeric:tabular-nums;white-space:nowrap';
         row.append(a, b); out.append(row); });
     } catch (e) { out.textContent = '방문 기록을 불러오지 못했어요.'; }
   })();
