@@ -2871,12 +2871,12 @@ function kmaApply(d) {
   const at = Date.parse(d.at || ''); if (!isFinite(at)) return;
   const sky = String(d.sky || '').slice(0, 12), pty = ['none', 'rain', 'shower', 'sleet', 'snow'].includes(d.pty) ? d.pty : 'none';
   const temp = isFinite(+d.temp) ? Math.round(+d.temp * 10) / 10 : null;
-  Object.assign(KMA, { at, sky, temp, pty, snowOn: pty === 'snow' || pty === 'sleet', wet: pty === 'none' ? 0 : pty === 'shower' ? .8 : 1, cloud: /흐림/.test(sky) ? .9 : /구름/.test(sky) ? .45 : pty !== 'none' ? .9 : 0 });
+  Object.assign(KMA, { at, sky, temp, pty, src: d.source || '', snowOn: pty === 'snow' || pty === 'sleet', wet: pty === 'none' ? 0 : pty === 'shower' ? .8 : 1, cloud: /흐림/.test(sky) ? .9 : /구름/.test(sky) ? .45 : pty !== 'none' ? .9 : 0 });
   updatePlaceChip();
   if (!KMA.announced && kmaFresh() && WTH.mode === 'kma' && KMA.wet > 0) { KMA.announced = true; setTimeout(() => { if (S.mode !== 'title') toast(KMA.snowOn ? '대구에 눈이 와요. 공방 창밖에도요.' : '대구에 비가 와요. 공방 창밖에도요.'); }, 5000); }
 }
 function kmaText() { if (!kmaFresh()) return ''; return `대구 ${KMA.temp != null ? KMA.temp + '℃ ' : ''}${KMA.pty === 'none' ? KMA.sky : { rain: '비', shower: '소나기', sleet: '진눈깨비', snow: '눈' }[KMA.pty]}`; }
-function kmaLine() { if (!kmaFresh()) return '대구 날씨를 아직 받지 못했어요. 그동안은 가끔 비가 와요.'; const d = new Date(KMA.at); return `${kmaText()} · 기상청 ${d.getHours()}시 기준`; }
+function kmaLine() { if (!kmaFresh()) return '대구 날씨를 아직 받지 못했어요. 그동안은 가끔 비가 와요.'; const d = new Date(KMA.at); return `${kmaText()} · ${KMA.src === 'open-meteo' ? '실시간' : '기상청'} ${d.getHours()}시 기준`; }
 function updatePlaceChip() { updatePlaceChip_old(); const t = kmaText(); if (t) { const s = el('small'); s.textContent = ' · ' + t; ui.place.append(s); } }
 (async () => {
   try {

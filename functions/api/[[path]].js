@@ -41,10 +41,25 @@ function canWrite(op, coll, id, admin, data) {
 }
 
 // 대구 날씨: 공공데이터포털 기상청 초단기실황/초단기예보 (WEATHER_KEY 있을 때만)
+// 키 없을 땐 Open-Meteo(무료·무키) 대구 현재 날씨
+async function refreshOpenMeteo(env) {
+  try {
+    const j = await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=35.8714&longitude=128.6014&current=temperature_2m,weather_code,cloud_cover&timezone=Asia%2FSeoul')).json();
+    const c = j.current || {}, w = +c.weather_code, cc = +c.cloud_cover, temp = +(+c.temperature_2m).toFixed(1);
+    if (!isFinite(temp)) return;
+    let pty = 'none';
+    if ([56, 57, 66, 67].includes(w)) pty = 'sleet';
+    else if ((w >= 71 && w <= 77) || w === 85 || w === 86) pty = 'snow';
+    else if (w >= 80 && w <= 82) pty = 'shower';
+    else if ((w >= 51 && w <= 65) || w >= 95) pty = 'rain';
+    const sky = w === 3 || w === 45 || w === 48 || cc >= 80 ? '흐림' : (w === 2 || cc >= 40) ? '구름많음' : '맑음';
+    await putDoc(env, 'weather/daegu', { sky, pty, temp, at: (c.time || '').slice(0, 16) + ':00+09:00', source: 'open-meteo', fetched: Date.now() });
+  } catch (e) {}
+}
 async function refreshWeather(env) {
-  if (!env.WEATHER_KEY) return;
   const cur = await getDoc(env, 'weather/daegu');
-  if (cur && cur.fetched && Date.now() - cur.fetched < 50 * 60 * 1000) return;
+  if (cur && cur.fetched && Date.now() - cur.fetched < (env.WEATHER_KEY ? 50 : 20) * 60 * 1000) return;
+  if (!env.WEATHER_KEY) return refreshOpenMeteo(env);
   const k = new Date(Date.now() + 9 * 3600e3 - 45 * 60e3), ymd = k.toISOString().slice(0, 10).replace(/-/g, ''), hh = String(k.getUTCHours()).padStart(2, '0');
   const q = (op, bt) => `https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/${op}?serviceKey=${encodeURIComponent(env.WEATHER_KEY)}&pageNo=1&numOfRows=60&dataType=JSON&base_date=${ymd}&base_time=${bt}&nx=89&ny=90`;
   try {
@@ -55,8 +70,8 @@ async function refreshWeather(env) {
     try { const f = await (await fetch(q('getUltraSrtFcst', hh + '30'))).json(); const s = f.response.body.items.item.filter(x => x.category === 'SKY').sort((a, b) => (a.fcstDate + a.fcstTime).localeCompare(b.fcstDate + b.fcstTime))[0]; sky = { 1: '맑음', 3: '구름많음', 4: '흐림' }[+s.fcstValue] || '맑음'; } catch (e) {}
     const pty = { 0: 'none', 1: 'rain', 2: 'sleet', 3: 'snow', 5: 'rain', 6: 'sleet', 7: 'snow' }[ptyN] || 'none';
     const at = `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}T${hh}:00:00+09:00`;
-    if (isFinite(temp)) await putDoc(env, 'weather/daegu', { sky, pty, temp, at, source: '기상청 초단기실황', fetched: Date.now() });
-  } catch (e) {}
+    if (isFinite(temp)) await putDoc(env, 'weather/daegu', { sky, pty, temp, at, source: '기상청 초단기실황', fetched: Date.now() }); else await refreshOpenMeteo(env);
+  } catch (e) { await refreshOpenMeteo(env); }
 }
 
 export async function onRequest(ctx) {
