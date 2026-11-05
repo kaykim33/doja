@@ -100,7 +100,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--celadon);outlin
 #saju .d{font-size:10.5px;color:var(--ink-2);line-height:1.25;min-height:2.5em}
 #saju button.on .d{color:#d7cdbf}
 #fortune{font-size:13.5px;line-height:1.55;min-height:3.2em;margin:0 0 14px;color:var(--ink)}
-#nick{display:flex;gap:6px;justify-content:center;margin-bottom:12px}
+#nick{display:flex;gap:6px;justify-content:center;margin-bottom:10px}#look{display:flex;flex-direction:column;gap:7px;align-items:center;margin:0 auto 14px;font-size:12.5px;color:var(--ink-2)}#look .lr{display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:center}#look .lr>span{min-width:44px;text-align:right}#look .sw2{width:24px;height:24px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px rgba(0,0,0,.15) inset;cursor:pointer;padding:0}#look .sw2.on{border-color:var(--ink)}#look .hb{height:26px;padding:0 10px;border-radius:13px;border:1px solid var(--line);background:rgba(255,255,255,.8);font:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}#look .hb.on{background:var(--ink);color:#fff}
 #nick input{width:150px;height:42px;border-radius:21px;border:1px solid var(--line);background:rgba(255,255,255,.85);padding:0 14px;font:inherit;font-size:16px;text-align:center;color:var(--ink)}
 #enter{height:46px;padding:0 28px;border-radius:23px;background:var(--ink);color:var(--paper);font-family:var(--display);font-size:17px;box-shadow:0 8px 24px rgba(45,41,36,.25)}
 #enter:active{transform:scale(.97)}
@@ -192,6 +192,7 @@ body.zen #top,body.zen #dock,body.zen #rail,body.zen #back,body.zen #labels,body
     <div id="saju"></div>
     <p id="fortune">오행 중 하나를 누르면 오늘의 처방이 나와요.</p>
     <div id="nick"><input id="nickIn" maxlength="10" placeholder="공방에서 쓸 이름" autocomplete="off"></div>
+    <div id="look"></div>
     <button id="enter">딸랑, 들어가기</button>
     <p class="fine">소리가 중요해요. 이어폰을 권해요. 아이폰은 무음 모드여도 들리게 해 두었어요.<br>점수도 시간제한도 없어요. 그냥 앉아 있다 가도 돼요.<br>만든 이 · Instagram @cho.soyoho</p>
   </div>
@@ -584,10 +585,19 @@ function makeBuddy(o) {
   const skin = std(o.skin || '#f3d7bf', .7), body = std(o.body || '#7f9c8f', .85), ap = std(o.apron || '#e9dcc6', .9), dark = std('#2b2522', .5);
   const legs = [-.07, .07].map(x => mesh(new THREE.CylinderGeometry(.05, .045, .2, 10), std('#5b5149', .8), x, .12, 0, g));
   const b = mesh(new THREE.SphereGeometry(.24, 24, 18), body, 0, .42, 0, g); b.scale.set(1, 1.15, .9);
-  const apron = mesh(new THREE.SphereGeometry(.245, 20, 14, -.9, 1.8, .9, 1.5), ap, 0, .4, 0, g); apron.scale.set(1.01, 1.12, .93);
+  const apron = mesh(new THREE.SphereGeometry(.246, 24, 16, Math.PI / 2 - .78, 1.56, .78, 1.6), ap, 0, .42, 0, g); apron.scale.set(1.01, 1.16, .93);
+  const strapM = std(o.strap || '#8a6446', .7);
+  const neck = mesh(new THREE.TorusGeometry(.115, .011, 6, 24, Math.PI), strapM, 0, .66, .02, g); neck.rotation.set(-.35, 0, 0);
+  const waist = mesh(new THREE.TorusGeometry(.252, .01, 6, 40), strapM, 0, .4, 0, g); waist.scale.set(1, 1, .93); waist.rotation.x = Math.PI / 2;
+  const pocket = mesh(new THREE.PlaneGeometry(.11, .07), std(o.apron2 || o.apron || '#e9dcc6', .9, { side: THREE.DoubleSide }), 0, .33, .218, g, false); pocket.rotation.x = -.18;
   const head = new THREE.Group(); head.position.set(0, .82, 0); g.add(head);
   mesh(new THREE.SphereGeometry(.21, 28, 20), skin, 0, 0, 0, head);
-  const hair = mesh(new THREE.SphereGeometry(.222, 24, 16, 0, TAU, 0, Math.PI * .52), std(o.hair || '#3a2e28', .8), 0, .015, -.012, head); hair.rotation.x = -.25;
+  const hm = std(o.hair || '#3a2e28', .8), hs = o.hs || 'short';
+  const hair = mesh(new THREE.SphereGeometry(.222, 24, 16, 0, TAU, 0, Math.PI * (hs === 'bob' ? .62 : .52)), hm, 0, .015, -.012, head); hair.rotation.x = -.25;
+  if (hs === 'bob') { const b = mesh(new THREE.CylinderGeometry(.228, .21, .16, 24, 1, true, Math.PI * .32, Math.PI * 1.36), hm, 0, -.05, -.02, head); }
+  if (hs === 'bun') { mesh(new THREE.SphereGeometry(.075, 14, 10), hm, 0, .2, -.1, head); }
+  if (hs === 'beanie') { const bm = std(o.beanie || '#6d8a52', .9); mesh(new THREE.SphereGeometry(.232, 24, 14, 0, TAU, 0, Math.PI * .45), bm, 0, .03, -.01, head).rotation.x = -.2; const rib = mesh(new THREE.TorusGeometry(.212, .028, 8, 28), bm, 0, .085, 0, head); rib.rotation.x = Math.PI / 2 - .2; mesh(new THREE.SphereGeometry(.045, 10, 8), bm, 0, .25, -.03, head); }
+  if (hs === 'part') { const sw = mesh(new THREE.SphereGeometry(.12, 16, 10), hm, -.07, .14, .07, head); sw.scale.set(1.25, .45, 1.1); sw.rotation.z = .35; }
   const eyes = [-.075, .075].map(x => { const e = mesh(new THREE.SphereGeometry(.022, 10, 8), dark, x, -.01, .195, head); e.scale.set(1, 1.25, .5); return e; });
   [-.12, .12].forEach(x => { const c = mesh(new THREE.CircleGeometry(.03, 16), new THREE.MeshBasicMaterial({ color: C('#f2a49a'), transparent: true, opacity: .55 }), x, -.06, .19, head, false); c.rotation.y = x * 2; });
   const arms = [-1, 1].map(s => { const a = mesh(new THREE.SphereGeometry(.065, 12, 10), skin, s * .24, .42, .1, g); a.scale.set(1, 1, 1); return a; });
@@ -606,7 +616,8 @@ function animBuddy(g, dt, t, talk) {
 }
 
 // 자판기 선생님
-const teacher = makeBuddy({ body: '#5f6f7c', apron: '#d8c7a6', hair: '#9a9590', towel: '#e8e2d6', buttons: ['#d9573b', '#e2b440', '#5a8fbf'], glasses: true });
+const teacher = makeBuddy({ body: '#e4dfd5', apron: '#3d4b5e', apron2: '#33404f', strap: '#9a6a3e', hair: '#2a2522', hs: 'part', glasses: true });
+{ const pen = mesh(new THREE.CylinderGeometry(.006, .006, .09, 8), std('#c9a24a', .3, { metalness: .9 }), .045, .37, .225, teacher, false); pen.rotation.z = .08; const tie = mesh(new THREE.BoxGeometry(.035, .012, .02), std('#2a2522', .5), 0, .64, .2, teacher, false); }
 teacher.position.set(-1.75, 0, -0.25); teacher.rotation.y = .5; teacher.scale.setScalar(1.05); scene.add(teacher);
 clickable(teacher, { act: 'teacher' });
 const TCH = { home: V3(-1.75, 0, -0.25), target: null, spin: 0, nextLine: 40, walkT: 55, talking: 0 };
@@ -1727,7 +1738,7 @@ function myPot_old() {
 }
 function pushPresence(force) {
   if (!MP.room || S.mode === 'title') return; const now = performance.now(); if (!force && now - MP.last < 400) return; MP.last = now;
-  const p = { nick: (S.nick || '손님').slice(0, 10), color: S.color, spot: S.station, wheel: S.myWheel, act: S.mode, pot: myPot() };
+  const p = { nick: (S.nick || '손님').slice(0, 10), color: S.color, ap: S.apron, hs: S.hs, hc: S.hairC, spot: S.station, wheel: S.myWheel, act: S.mode, pot: myPot() };
   if (S.mode === 'walk') { p.px = +WALK.x.toFixed(2); p.pz = +WALK.z.toFixed(2); p.pr = +WALK.ry.toFixed(2); }
   if (S.say) p.say = S.say;
   MP.room.presence(p).catch(() => {});
@@ -1740,7 +1751,7 @@ function syncAvatars() {
     const pr = p.presence || {}; if (!pr.nick) return; keep.add(p.peer);
     let a = MP.peers.get(p.peer);
     if (!a) {
-      const av = makeBuddy({ body: /^#[0-9a-f]{6}$/i.test(pr.color) ? pr.color : '#7f9c8f', hair: pick(['#2e2420', '#5a3e2a', '#1e1a18', '#7a5a3a']) }); av.scale.setScalar(.95); scene.add(av);
+      const hex = v => /^#[0-9a-f]{6}$/i.test(v || '') ? v : null; const av = makeBuddy({ body: hex(pr.color) || '#7f9c8f', apron: hex(pr.ap) || '#e9dcc6', hair: hex(pr.hc) || '#3a2e28', hs: ['short', 'bob', 'bun', 'beanie', 'part'].includes(pr.hs) ? pr.hs : 'short' }); av.scale.setScalar(.95); scene.add(av);
       const tag = el('div', 'lbl ppl'); ui.labels.append(tag);
       const potM = new THREE.Mesh(new THREE.BufferGeometry(), clayWet); potM.scale.setScalar(POT_S); potM.castShadow = true;
       a = { av, tag, potM, pos: V3(0, 0, 0), target: V3(0, 0, 0), first: true }; MP.peers.set(p.peer, a);
@@ -1884,7 +1895,7 @@ document.addEventListener('visibilitychange', () => { if (!AU.ctx) return; if (d
 // ================= 걷기 =================
 const WALK = { x: .4, z: 3.0, ry: Math.PI, yaw: Math.PI, pitch: .36, dist: 2.6, vx: 0, vz: 0, goal: null, keys: {}, jx: 0, jy: 0, moving: 0, step: 0, stuck: 0, near: null };
 let me = null;
-function meInit() { if (me) return; me = makeBuddy({ body: S.color, hair: '#3a2e28' }); me.visible = false; scene.add(me); me.position.set(WALK.x, 0, WALK.z); }
+function meInit() { if (me) return; me = makeBuddy({ body: S.color, hair: S.hairC || '#3a2e28', apron: S.apron || '#e9dcc6', hs: S.hs || 'short' }); me.visible = false; scene.add(me); me.position.set(WALK.x, 0, WALK.z); }
 function legSwing(g, t, m) { const L = g.userData.legs; if (!L) return; L[0].rotation.x = Math.sin(t * 10) * .6 * m; L[1].rotation.x = -Math.sin(t * 10) * .6 * m; g.userData.arms[0].position.z = .1 + Math.sin(t * 10) * .06 * m; g.userData.arms[1].position.z = .1 - Math.sin(t * 10) * .06 * m; }
 const angLerp = (a, b, k) => { let d = ((b - a + Math.PI) % TAU + TAU) % TAU - Math.PI; return a + d * Math.min(1, k); };
 
@@ -5215,6 +5226,49 @@ const DAYS = (() => {
     try { if (!ev.some(e => e.quiet || e.fx === 'kind')) lines.forEach(l => TEACH_LINES.push(l, l)); } catch (e) {}
     $('#enter').addEventListener('click', () => setTimeout(() => teacherSay(lines[0], 6), 11000));
   }, 3000);
+})();
+
+// ================= 입장할 때 내 모습 고르기 =================
+(() => {
+  S.apron = store.get('apron', '#e9dcc6'); S.hs = store.get('hs', 'short'); S.hairC = store.get('hairC', '#3a2e28');
+  const box = $('#look'); if (!box) return;
+  const row = (label, items, cur, set, kind) => { const r = el('div', 'lr'); const l = el('span'); l.textContent = label; r.append(l);
+    items.forEach(([v, name]) => { const b = el('button', kind === 'c' ? 'sw2' : 'hb'); b.type = 'button'; if (kind === 'c') { b.style.background = v; b.setAttribute('aria-label', name); b.title = name; } else b.textContent = name; if (v === cur()) b.classList.add('on'); b.onclick = () => { set(v); [...r.querySelectorAll('button')].forEach(x => x.classList.toggle('on', x === b)); }; r.append(b); }); box.append(r); };
+  row('옷', AV_COLORS.map(c => [c, c]), () => S.color, v => { S.color = v; store.set('color', v); }, 'c');
+  row('앞치마', [['#e9dcc6', '생지'], ['#3d4b5e', '데님'], ['#6b4a32', '가죽'], ['#2b2725', '먹색'], ['#c9d8cf', '청자']], () => S.apron, v => { S.apron = v; store.set('apron', v); }, 'c');
+  row('머리', [['short', '짧게'], ['bob', '단발'], ['bun', '올림'], ['part', '가르마'], ['beanie', '비니']], () => S.hs, v => { S.hs = v; store.set('hs', v); }, 'b');
+  row('머리색', [['#3a2e28', '흑갈'], ['#1e1a18', '검정'], ['#7a5a3a', '밤색'], ['#c9a06a', '금발'], ['#b8b2aa', '은발']], () => S.hairC, v => { S.hairC = v; store.set('hairC', v); }, 'c');
+})();
+// ================= 불멍: 타닥타닥, 불씨, 안쪽 장작 =================
+(() => {
+  // 가마 안 장작 (빨갛게 달아오른)
+  const emberM = new THREE.MeshStandardMaterial({ color: C('#3a2418'), emissive: C('#ff5a1a'), emissiveIntensity: .8, roughness: .9 });
+  [[0, .06, -.08, .4], [.03, .06, .08, -.35], [-.02, .12, 0, .1]].forEach(([dx, y, dz, r]) => { const l = mesh(new THREE.CylinderGeometry(.035, .04, .34, 8), emberM, KILN.x + .5 + dx, y, KILN.z + dz, scene, false); l.rotation.set(Math.PI / 2, r, 0); });
+  // 불씨 입자
+  const N = 46, pos = new Float32Array(N * 3), life = new Float32Array(N), vel = [];
+  const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const sparks = new THREE.Points(gg, new THREE.PointsMaterial({ color: C('#ffb055'), size: .022, transparent: true, opacity: .95, blending: THREE.AdditiveBlending, depthWrite: false })); scene.add(sparks);
+  const spawn = (i, burst) => { life[i] = rand(.6, 1.6); pos[i * 3] = KILN.x + .62 + rand(-.02, .06); pos[i * 3 + 1] = rand(.12, .32); pos[i * 3 + 2] = KILN.z + rand(-.18, .18); vel[i] = [rand(.05, .25) * (burst ? 2 : 1), rand(.25, .6) * (burst ? 1.6 : 1), rand(-.08, .08)]; };
+  for (let i = 0; i < N; i++) { spawn(i); life[i] = rand(0, 1.4); }
+  const burst = () => { for (let k = 0; k < 10; k++) spawn(Math.floor(rand(0, N)), true); };
+  // 더 촘촘한 타닥 소리 (가마 앞에 앉아 있을 때)
+  let tk = 0, pop = rand(6, 14), settle = rand(25, 45), last = performance.now();
+  requestAnimationFrame(function fire(now) {
+    const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000;
+    const lv = (typeof KF !== 'undefined' ? KF.lvl : .4);
+    emberM.emissiveIntensity = .55 + .45 * lv + .25 * Math.sin(t * 3.1) * Math.sin(t * 1.7);
+    for (let i = 0; i < N; i++) { life[i] -= dt; if (life[i] <= 0) { if (Math.random() < .35 + lv * .5) spawn(i); else { pos[i * 3 + 1] = -5; life[i] = rand(.1, .6); continue; } } const v = vel[i]; if (!v) continue; pos[i * 3] += v[0] * dt; pos[i * 3 + 1] += v[1] * dt; pos[i * 3 + 2] += v[2] * dt + Math.sin(t * 5 + i) * dt * .03; v[1] *= .995; }
+    gg.attributes.position.needsUpdate = true; sparks.material.opacity = .6 + .35 * Math.sin(t * 17);
+    const atKiln = S.station === 'kiln' || (S.mode === 'walk' && Math.hypot(WALK.x - KILN.x, WALK.z - KILN.z) < 2.4);
+    if (atKiln && AU.ctx && AU.on !== false) {
+      const n = AU.ctx.currentTime, v = MIX.fire;
+      tk -= dt; if (tk < 0) { tk = rand(.05, .22); noiseHit(n, 'bandpass', rand(2400, 6000), 5, rand(.05, .14) * v, .0005, rand(.006, .02), .2); }
+      pop -= dt; if (pop < 0) { pop = rand(4, 12); noiseHit(n, 'bandpass', rand(600, 1100), 1.6, .4 * v, .0006, .05, .3); noiseHit(n + .01, 'highpass', 3000, .7, .12 * v, .001, .08, .2); burst(); }
+      settle -= dt; if (settle < 0) { settle = rand(25, 50); tone(n, 70, .12 * v, .01, .25, 'sine', .3); noiseHit(n, 'lowpass', 400, .8, .18 * v, .01, .3, .3); for (let k = 0; k < 7; k++) noiseHit(n + .08 + k * rand(.03, .09), 'bandpass', rand(1500, 4500), 4, rand(.08, .2) * v, .0005, .015, .2); burst(); burst(); }
+    }
+    requestAnimationFrame(fire);
+  });
+  const ff = window.feedFire; if (typeof feedFire === 'function') { const o = feedFire; feedFire = function () { burst(); burst(); return o.apply(this, arguments); }; }
 })();
 </script>
 
