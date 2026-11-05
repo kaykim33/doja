@@ -326,7 +326,8 @@ const floor = mesh(new THREE.PlaneGeometry(10, 8), floorM); floor.rotation.x = -
 const wallM = std('#ffffff', 0.95, { map: T.wall });
 const wallM2 = wallM.clone();
 const WH = ROOM.h;
-mesh(new THREE.BoxGeometry(10.4, WH, 0.2), wallM, 0, WH / 2, 4.1);
+// 앞벽: 현관문 자리(x -3.93~-2.97, 높이 2.1) 비움
+mesh(new THREE.BoxGeometry(1.47, WH, 0.2), wallM, -4.665, WH / 2, 4.1); mesh(new THREE.BoxGeometry(8.17, WH, 0.2), wallM, 1.115, WH / 2, 4.1); mesh(new THREE.BoxGeometry(.96, WH - 2.1, 0.2), wallM, -3.45, (WH + 2.1) / 2, 4.1);
 mesh(new THREE.BoxGeometry(0.2, WH, 8.4), wallM, -5.1, WH / 2, 0);
 mesh(new THREE.BoxGeometry(0.2, WH, 8.4), wallM, 5.1, WH / 2, 0);
 // 창 벽 (z=-4) : 창 x[-3.4,3.4] y[0.72,2.96]
@@ -5818,7 +5819,7 @@ const FDOOR = (() => {
   let last = performance.now();
   (function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now;
     if (o.closeAt && now > o.closeAt) { o.closeAt = 0; o.target = 0; setTimeout(() => thunk(), 900); }
-    o.open += (o.target - o.open) * Math.min(1, dt * 2.2); hinge.rotation.y = -o.open * 1.5; glowM.opacity = Math.min(1, o.open * 1.4); light.intensity = o.open * 1.6; })(last);
+    o.open += (o.target - o.open) * Math.min(1, dt * 2.2); hinge.rotation.y = -o.open * 1.5; glowM.opacity = 0; light.intensity = o.open * .6; })(last);
   function thunk() { if (!AU.ctx) return; const t = AU.ctx.currentTime; noiseHit(t, 'lowpass', 260, .8, .09 * MIX.amb, .003, .12, .1); tone(t + .1, 1400, .02 * MIX.amb, .002, .05, 'square', .2); tone(t + .17, 1100, .02 * MIX.amb, .002, .05, 'square', .2); }
   o.unlock = () => { o.target = 1; o.closeAt = performance.now() + 7000; if (AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t + .55, 'lowpass', 300, .7, .06 * MIX.amb, .005, .4, .1); } };
   return o;
@@ -5879,7 +5880,7 @@ const LOCK = (() => {
       scr('확인 중…');
       const r = await (await fetch('/api/door', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: c }) })).json();
       if (!r.set) { melody(false); FDOOR.light(1, 'no'); scr('아직 잠긴 문이에요'); say(pick(['비밀번호가 아직 정해지지 않은 문이에요. 언젠가 열려요.', '자판기: “그 문은 아직이에요. 저도 열쇠가 없어요.”'])); return; }
-      if (r.ok) { fails = 0; melody(true); FDOOR.light(1, 'ok'); scr('열렸어요'); setTimeout(() => { close(); FDOOR.unlock(); toast('문이 열렸어요. 너머는 아직 공사 중이에요. 곧 이어질 거예요.', null, null, 6); try { teacherSay(pick(['어떻게 아셨어요? …아무한테도 말하지 마요.', '거긴 아직 짓는 중이에요. 먼지 조심하세요.']), 5); } catch (e) {} }, 650); return; }
+      if (r.ok) { fails = 0; melody(true); FDOOR.light(1, 'ok'); scr('열렸어요'); setTimeout(() => { close(); FDOOR.unlock(); toast('문이 열렸어요. 안으로 들어가 볼까요?', null, null, 5); try { teacherSay(pick(['어떻게 아셨어요? …아무한테도 말하지 마요.', '거긴 제 작업실이에요. 너무 어지럽혀져 있어도 모른 척해 줘요.']), 5); } catch (e) {} }, 650); return; }
       fails++; melody(false); FDOOR.light(1, 'no'); scr('다시 입력하세요');
       if (fails >= 3) { lockUntil = Date.now() + 30000; fails = 0; say(pick(['자판기: “비번은 저도 몰라요. 진짜로요.”', '자판기: “힌트는 없어요. 세계관은 원래 천천히 열려요.”', '자판기: “문 두드리는 소리가 너무 성실하네요.”'])); scr('30초 뒤에 다시'); }
       else say('삐삐삐. 틀렸어요.');
@@ -5892,6 +5893,112 @@ const LOCK = (() => {
   if (c && c.act === 'frontdoor') { const tx = FDOOR.P.x, tz = FDOOR.P.z - .75, near = S.mode !== 'walk' || Math.hypot(WALK.x - tx, WALK.z - tz) < 1.4; if (near) { LOCK.open(); return; } WALK.goal = { x: tx, z: tz, run: () => LOCK.open() }; markGoal(tx, tz); return; }
   return tf.apply(this, arguments); }; }
 { const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'frontdoor', x: FDOOR.P.x, z: FDOOR.P.z - .7, r: .5, text: '현관문 도어락', run: () => LOCK.open() }); return Z; }; }
+
+/* ── 비밀 작업실 (현관문 너머) ── */
+const SR = { x0: -5.0, x1: -1.6, z0: 4.2, z1: 8.0, h: 2.7 };
+{
+  const g = new THREE.Group(); scene.add(g); SR.g = g;
+  const cx = (SR.x0 + SR.x1) / 2, cz = (SR.z0 + SR.z1) / 2, w = SR.x1 - SR.x0, d = SR.z1 - SR.z0;
+  const plaster = std('#d8c8b2', .95), floorW = std('#6e4c34', .8), beam = std('#4e3526', .8), oak = std('#7b5236', .7), oakD = std('#5c3d28', .75), paper = std('#efe6d2', .95), clay = std('#b79a7c', .9);
+  const fl = mesh(new THREE.PlaneGeometry(w, d), floorW, cx, .002, cz, g); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; fl.userData.ground = true; fl.userData.click = { act: 'floor' }; clickables.push(fl);
+  for (let i = 1; i < 9; i++) mesh(new THREE.BoxGeometry(.01, .004, d), beam, SR.x0 + i * w / 9, .004, cz, g, false);
+  const ce = mesh(new THREE.PlaneGeometry(w, d), std('#bfae96', 1), cx, SR.h, cz, g, false); ce.rotation.x = Math.PI / 2;
+  [[SR.x0 - .1, cz, .2, d + .4], [SR.x1 + .1, cz, .2, d + .4]].forEach(([x, z, ww, dd]) => mesh(new THREE.BoxGeometry(ww, SR.h, dd), plaster, x, SR.h / 2, z, g));
+  mesh(new THREE.BoxGeometry(w + .4, SR.h, .2), plaster, cx, SR.h / 2, SR.z1 + .1, g);
+  for (let i = 0; i < 3; i++) mesh(new THREE.BoxGeometry(w, .14, .12), beam, cx, SR.h - .07, SR.z0 + .6 + i * 1.3, g, false);
+  // 백열 전구
+  const bulb = mesh(new THREE.SphereGeometry(.05, 14, 10), new THREE.MeshBasicMaterial({ color: C('#ffd9a0') }), cx, SR.h - .55, cz, g, false);
+  mesh(new THREE.CylinderGeometry(.004, .004, .5, 4), beam, cx, SR.h - .27, cz, g, false);
+  const lamp = new THREE.PointLight(0xffc98a, 1.25, 7, 1.6); lamp.position.set(cx, SR.h - .6, cz); g.add(lamp); SR.lamp = lamp; SR.bulb = bulb;
+  // 오래된 책상 + 노트 + 스탠드
+  const desk = new THREE.Group(); desk.position.set(cx + .55, 0, SR.z1 - .45); g.add(desk);
+  mesh(rbox(1.3, .05, .6, .01), oak, 0, .76, 0, desk); [[-.6, -.26], [.6, -.26], [-.6, .26], [.6, .26]].forEach(([x, z]) => mesh(new THREE.BoxGeometry(.05, .74, .05), oakD, x, .37, z, desk));
+  const note = new THREE.Group(); note.position.set(-.15, .79, -.05); note.rotation.y = .2; desk.add(note);
+  mesh(new THREE.BoxGeometry(.22, .012, .3), paper, -.115, 0, 0, note).rotation.z = .06; mesh(new THREE.BoxGeometry(.22, .012, .3), paper, .115, 0, 0, note).rotation.z = -.06; mesh(new THREE.BoxGeometry(.46, .006, .31), std('#6b3f2a', .8), 0, -.008, 0, note);
+  for (let i = 0; i < 7; i++) mesh(new THREE.BoxGeometry(.15, .002, .006), std('#8a7a66', 1), -.115, .008, -.1 + i * .035, note, false);
+  const sl = new THREE.Group(); sl.position.set(.45, .79, .1); desk.add(sl); mesh(new THREE.CylinderGeometry(.06, .07, .02, 16), beam, 0, 0, 0, sl); mesh(new THREE.CylinderGeometry(.008, .008, .32, 6), beam, 0, .16, 0, sl).rotation.z = .25; const shade = mesh(new THREE.ConeGeometry(.08, .1, 16, 1, true), std('#2f4a3a', .6, { side: THREE.DoubleSide }), -.06, .32, 0, sl); shade.rotation.z = -.8;
+  const dl = new THREE.PointLight(0xffd7a0, .5, 1.6, 2); dl.position.set(-.1, .3, 0); sl.add(dl);
+  [['#b4554c', .16], ['#a7c3ad', .13]].forEach(([c, r], i) => { const cup = mesh(new THREE.CylinderGeometry(r * .3, r * .22, r * .5, 16), std(c, .4), -.5 + i * .14, .79 + r * .25, .18, desk); });
+  // 실패작 더미
+  const pile = new THREE.Group(); pile.position.set(SR.x0 + .55, 0, SR.z1 - .6); g.add(pile);
+  const cols = ['#f4f2ec', '#a7c3ad', '#cbbda4', '#3d3632', '#b79a7c', '#efe6d4', '#b4554c'];
+  for (let i = 0; i < 26; i++) { const r = rand(.07, .14), m = mesh(new THREE.SphereGeometry(r, 14, 8, 0, TAU, 0, rand(1.3, 1.9)), std(cols[i % cols.length], .45, { side: THREE.DoubleSide }), rand(-.32, .32), .04 + Math.floor(i / 7) * .1 + rand(0, .06), rand(-.3, .3), pile); m.rotation.set(rand(-1.8, 1.8), rand(0, TAU), rand(-1.8, 1.8)); m.scale.set(1, rand(.45, 1), rand(.7, 1.2)); }
+  // 첫 그릇 (받침 + 유리 덮개)
+  const ped = new THREE.Group(); ped.position.set(SR.x1 - .45, 0, cz + .2); g.add(ped);
+  mesh(new THREE.BoxGeometry(.34, .9, .34), oakD, 0, .45, 0, ped);
+  const fb = mesh(new THREE.SphereGeometry(.075, 16, 8, 0, TAU, Math.PI / 2, Math.PI / 2), std('#b79a7c', .8, { side: THREE.DoubleSide }), 0, .98, 0, ped); fb.scale.set(1.1, .8, .9); fb.rotation.z = .12;
+  mesh(new THREE.SphereGeometry(.16, 18, 12, 0, TAU, 0, Math.PI / 2), new THREE.MeshStandardMaterial({ color: C('#e8f2f2'), transparent: true, opacity: .18, roughness: .05, depthWrite: false }), 0, .9, 0, ped, false);
+  // 흐릿한 사진 액자
+  const ph = new THREE.Group(); ph.position.set(SR.x1 - .005, 1.55, cz - .7); ph.rotation.y = -Math.PI / 2; g.add(ph);
+  mesh(rbox(.42, .32, .03, .006), oakD, 0, 0, 0, ph); mesh(new THREE.PlaneGeometry(.34, .24), std('#b8a37f', 1), 0, 0, .017, ph, false);
+  mesh(new THREE.CircleGeometry(.05, 14), std('#8f7a58', 1), -.06, .01, .018, ph, false); mesh(new THREE.CircleGeometry(.04, 14), std('#8f7a58', 1), .07, -.01, .018, ph, false);
+  // 유약 견본판
+  const tb = new THREE.Group(); tb.position.set(SR.x0 + .005, 1.45, cz - .4); tb.rotation.y = Math.PI / 2; g.add(tb);
+  mesh(new THREE.BoxGeometry(.9, .6, .02), oak, 0, 0, 0, tb);
+  ['#f4f2ec', '#a7c3ad', '#cbbda4', '#3d3632', '#b4554c', '#7b5439', '#3f5f9c', '#d6c27a', '#9aa7a0', '#efe6d4', '#5d6b52', '#c78f6a'].forEach((c, i) => mesh(new THREE.BoxGeometry(.16, .11, .015), std(c, .3), -.33 + (i % 4) * .22, .19 - Math.floor(i / 4) * .17, .015, tb, false));
+  // 자물쇠 상자
+  const chest = new THREE.Group(); chest.position.set(cx - .6, 0, SR.z1 - .45); g.add(chest);
+  mesh(rbox(.6, .36, .38, .02), oak, 0, .18, 0, chest); mesh(rbox(.62, .08, .4, .02), oakD, 0, .4, 0, chest);
+  [-.22, .22].forEach(x => mesh(new THREE.BoxGeometry(.04, .44, .41), std('#3a332d', .5, { metalness: .5 }), x, .22, 0, chest, false));
+  mesh(rbox(.08, .1, .03, .01), std('#b8935a', .3, { metalness: .8 }), 0, .32, -.2, chest, false);
+  // 또 다른 문 (다음 이야기)
+  const d2 = new THREE.Group(); d2.position.set(SR.x0 + .005, 0, SR.z0 + .9); d2.rotation.y = Math.PI / 2; g.add(d2);
+  mesh(rbox(.86, 1.95, .05, .01), std('#3e4a44', .7), 0, .975, .02, d2); mesh(rbox(.95, 2.02, .03, .01), beam, 0, 1.0, 0, d2);
+  mesh(rbox(.06, .09, .03, .008), std('#b8935a', .3, { metalness: .8 }), .33, 1.0, .06, d2, false); const lk = mesh(new THREE.TorusGeometry(.03, .007, 6, 14, Math.PI), std('#9aa0a6', .3, { metalness: .9 }), .33, 1.07, .07, d2, false);
+  // 클릭
+  const H = (obj, id, s) => { const b = new THREE.Box3().setFromObject(obj), sz = b.getSize(V3(0, 0, 0)), c = b.getCenter(V3(0, 0, 0)); const m = mesh(new THREE.BoxGeometry(Math.max(.3, sz.x + (s || .1)), Math.max(.3, sz.y + .1), Math.max(.3, sz.z + (s || .1))), new THREE.MeshBasicMaterial({ visible: false }), c.x, c.y, c.z, scene, false); m.userData.click = { act: 'secret', id }; clickables.push(m); };
+  H(note, 'note', .2); H(pile, 'pile'); H(ped, 'bowl'); H(ph, 'photo', .2); H(tb, 'tiles'); H(chest, 'chest'); H(d2, 'door2');
+  SR.box = [[cx + .55 - .7, cx + .55 + .7, SR.z1 - .8, SR.z1], [SR.x0, SR.x0 + 1.0, SR.z1 - 1.05, SR.z1], [SR.x1 - .65, SR.x1, cz - .05, cz + .45], [cx - .95, cx - .25, SR.z1 - .7, SR.z1]];
+  SR.spots = { note: [cx + .45, SR.z1 - 1.25], pile: [SR.x0 + .75, SR.z1 - 1.45], bowl: [SR.x1 - .95, cz + .2], photo: [SR.x1 - .8, cz - .7], tiles: [SR.x0 + .7, cz - .4], chest: [cx - .6, SR.z1 - 1.2], door2: [SR.x0 + .7, SR.z0 + .9] };
+}
+const SECRET = (() => {
+  const TXT = {
+    note: ['낡은 노트', '맨 앞 장에 연필로 적혀 있어요. “오늘도 실패. 근데 어제보다 덜 실패.” 그 아래로 날짜만 빼곡해요. 마지막 장은 찢겨 나갔어요.'],
+    pile: ['실패작 더미', '찌그러진 사발, 금 간 대접, 유약이 흘러내린 병. 하나도 버리지 않았네요. 맨 위에 쪽지: “버리면 잊어버려서.”'],
+    bowl: ['첫 그릇', '삐뚤빼뚤, 굽도 없는 작은 그릇. 유리 덮개 아래 소중히 놓여 있어요. 바닥에 서툰 글씨가 긁혀 있는데, 너무 닳아서 읽을 수가 없어요.'],
+    photo: ['흐릿한 사진', '두 사람이 물레 앞에서 웃고 있어요. 얼굴은 바래서 안 보여요. 액자 뒤에 뭔가 끼워져 있는 것 같지만, 꽉 고정돼 있어요.'],
+    tiles: ['유약 견본판', '열두 가지 유약 조각. 몇 개 아래에만 작은 점이 찍혀 있어요. 무슨 뜻일까요?'],
+    chest: ['잠긴 상자', '묵직한 나무 상자에 놋쇠 자물쇠. 숫자 다이얼이 달려 있어요. …지금은 꿈쩍도 안 해요.'],
+    door2: ['또 다른 문', '초록 문에 자물쇠가 걸려 있어요. 문틈으로 바람 냄새가 나요. 다음 이야기는 여기서부터일지도.']
+  };
+  const TEACH = { note: '그거 보지 마요. …아니 봐도 돼요. 별거 없어요.', pile: '실패작이 제일 많이 가르쳐 줘요.', bowl: '제 첫 그릇이에요. 못생겼죠. 그래서 좋아요.', photo: '그 사진은… 다음에 얘기해요.', chest: '그건 저도 비번 까먹었어요. 진짜로요.', door2: '거긴 아직이에요. 정말로 아직이에요.' };
+  const found = new Set(store.get('secretFound', []));
+  function show(id) {
+    const t = TXT[id]; if (!t) return;
+    if (!found.has(id)) { found.add(id); store.set('secretFound', [...found]); }
+    sheet(t[0], t[1], [el('small', null, `찾은 비밀 ${found.size} / ${Object.keys(TXT).length}`)]);
+    if (AU && AU.ctx) tone(AU.ctx.currentTime, 520, .03 * MIX.amb, .005, .4, 'sine', .3);
+    if (TEACH[id] && Math.random() < .6) setTimeout(() => { try { teacherSay(TEACH[id], 4); } catch (e) {} }, 900);
+    if (found.size === Object.keys(TXT).length && !store.get('secretAll', false)) { store.set('secretAll', true); setTimeout(() => toast('비밀 작업실을 전부 둘러봤어요. 상자와 초록 문은… 다음에 열려요.', null, null, 7), 1200); }
+  }
+  return { show, get inside() { return WALK.z > SR.z0 - .05; } };
+})();
+// 벽 충돌 · 문 통과
+{ const cf = collide; collide = function (x, z) {
+  const dx = Math.abs(x - FDOOR.P.x), open = FDOOR.open > .55, inS = WALK.z > 4.0;
+  if (inS || (z > 3.75 && dx < .4 && open)) {
+    if (z < SR.z0 + .15) { if (!open || dx > .36) { if (inS) z = SR.z0 + .15; else return cf(x, z); } x = clamp(x, FDOOR.P.x - .3, FDOOR.P.x + .3); if (z < 3.7) return cf(x, z); return [x, z]; }
+    x = clamp(x, SR.x0 + .25, SR.x1 - .25); z = clamp(z, SR.z0 + .15, SR.z1 - .25); const pr = .22;
+    for (const [x0, x1, z0, z1] of SR.box) { const a = x0 - pr, b = x1 + pr, c = z0 - pr, d = z1 + pr; if (x > a && x < b && z > c && z < d) { const p = [x - a, b - x, z - c, d - z], m = Math.min(...p); if (m === p[0]) x = a; else if (m === p[1]) x = b; else if (m === p[2]) z = c; else z = d; } }
+    return [x, z];
+  }
+  return cf(x, z); }; }
+{ const wc = walkCam; walkCam = function () { const r = wc(); if (WALK.z > 4.0) { const f = V3(Math.sin(WALK.yaw), 0, Math.cos(WALK.yaw)), head = V3(WALK.x, .95, WALK.z), d = Math.min(WALK.dist, 1.9); const pos = head.clone().addScaledVector(f, -d * Math.cos(WALK.pitch)).add(V3(0, d * Math.sin(WALK.pitch) + .2, 0)); pos.x = clamp(pos.x, SR.x0 + .12, SR.x1 - .12); pos.z = clamp(pos.z, SR.z0 + .05, SR.z1 - .12); pos.y = Math.min(pos.y, SR.h - .15); r.pos = pos; } return r; }; }
+// 안에서는 문을 그냥 열 수 있어요 + 바깥→안 목표는 문을 거쳐서
+{ const inHit = mesh(new THREE.BoxGeometry(1.0, 2.1, .3), new THREE.MeshBasicMaterial({ visible: false }), FDOOR.P.x, 1.05, SR.z0 + .2, scene, false); inHit.userData.click = { act: 'frontdoor_in' }; clickables.push(inHit); }
+{ const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click;
+  if (c && c.act === 'frontdoor' && WALK.z > 4.0) { FDOOR.unlock(); return; }
+  if (c && c.act === 'frontdoor_in') { if (WALK.z > 4.0) FDOOR.unlock(); else tf.apply(this, arguments); return; }
+  if (c && c.act === 'secret') { const sp = SR.spots[c.id], near = !sp || Math.hypot(WALK.x - sp[0], WALK.z - sp[1]) < 1.3 || S.mode !== 'walk'; if (near) SECRET.show(c.id); else { WALK.goal = { x: sp[0], z: sp[1], run: () => SECRET.show(c.id) }; markGoal(sp[0], sp[1]); } return; }
+  return tf.apply(this, arguments); }; }
+{ let last = performance.now(), wasIn = false; (function tk(now) { requestAnimationFrame(tk); last = now;
+  const gl = WALK.goal; if (gl && !gl.via && gl.z > SR.z0 && WALK.z < 3.9 && FDOOR.open > .3) { WALK.goal = { x: FDOOR.P.x, z: 3.75, via: true, run: () => { WALK.goal = Object.assign({}, gl, { via: true }); } }; }
+  if (gl && !gl.via && gl.z < 3.9 && WALK.z > 4.0) { if (FDOOR.open < .3) FDOOR.unlock(); WALK.goal = { x: FDOOR.P.x, z: 4.5, via: true, run: () => { WALK.goal = Object.assign({}, gl, { via: true }); } }; }
+  const inS = WALK.z > 4.0; if (inS && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 4000; // 안에 있거나 문틀에 있으면 닫히지 않게
+  if (Math.abs(WALK.x - FDOOR.P.x) < .5 && WALK.z > 3.4 && WALK.z < 4.6 && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 3000;
+  if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('자판기의 비밀 작업실이에요. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
+  SR.lamp.intensity = 1.2 + Math.sin(now / 900) * .04 + (Math.random() < .004 ? -.5 : 0); })(last); }
+{ const zf = zones; zones = function () { const Z = zf(); if (WALK.z > 4.0) { Object.entries(SR.spots).forEach(([id, p]) => Z.push({ id: 'secret', x: p[0], z: p[1], r: .45, text: { note: '노트 보기', pile: '실패작 더미', bowl: '첫 그릇', photo: '사진 보기', tiles: '유약 견본판', chest: '잠긴 상자', door2: '초록 문' }[id], run: () => SECRET.show(id) })); Z.push({ id: 'out', x: FDOOR.P.x, z: SR.z0 + .35, r: .45, text: '공방으로 나가기', run: () => FDOOR.unlock() }); } return Z; }; }
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
