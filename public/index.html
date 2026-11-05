@@ -5141,6 +5141,81 @@ const DAYS = (() => {
 })();
 // 찻자리: 생일 케이크 촛불
 { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'tea' && window.blowCandles) ui.acts.append(btn('촛불 끄기', () => window.blowCandles())); }; }
+
+// ================= 공휴일 · 세계의 날 · 흙·불·쇠·나무의 날 =================
+(() => {
+  const q = (location.search.match(/[?&]day=([a-z0-9-]+)/) || [])[1];
+  const kst = new Date(Date.now() + 9 * 3600e3), Y = kst.getUTCFullYear(), M = kst.getUTCMonth() + 1, D = kst.getUTCDate(), md = M * 100 + D, ymd = Y * 10000 + md;
+  const secondSat = m => { const d1 = new Date(Date.UTC(Y, m - 1, 1)).getUTCDay(); return m * 100 + 1 + ((6 - d1 + 7) % 7) + 7; };
+  const BUDDHA = { 2027: 20270513, 2028: 20280502, 2029: 20290520, 2030: 20300509 };
+  const LIST = [
+    { k: 'samil', on: md === 301, flag: 1, title: '3·1절', sub: '대한 독립 만세', lines: ['오늘은 3·1절이에요. 흙도 잠시 손을 멈추고 기억해요.'] },
+    { k: 'children', on: md === 505, title: '어린이날', sub: '오늘은 흙장난해도 혼 안 나요', fx: 'pinwheel', lines: ['어린이날이에요. 오늘은 흙장난해도 혼 안 나요.', '어른도 어린이였어요. 물레 한 판 하고 가요.'] },
+    { k: 'buddha', on: BUDDHA[Y] === ymd, title: '부처님오신날', sub: '마음에 등 하나 켜요', fx: 'lotus', lines: ['부처님오신날이에요. 정원에 연등을 달았어요.', '등 하나에 마음 하나. 천천히 걸어요.'] },
+    { k: 'memorial', on: md === 606, flag: 2, quiet: true, lines: ['오늘은 현충일이에요. 조용히 차 한 잔 해요.'] },
+    { k: 'liberation', on: md === 815, flag: 1, title: '광복절', sub: '빛을 되찾은 날', lines: ['광복절이에요. 오늘 가마 불은 조금 더 환하게 땔게요.'] },
+    { k: 'gaecheon', on: md === 1003, flag: 1, title: '개천절', sub: '하늘이 열린 날', lines: ['개천절이에요. 오늘 하늘은 유난히 맑아요.'] },
+    { k: 'hangul', on: md === 1009, title: '한글날', sub: 'ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ ㅅ ㅇ', lines: ['한글날이에요. 흙 토, 불 화… 아, 이건 한자네요.', '오늘은 타일에 한글로 남겨 줘요. ㅎㅎ도 좋아요.', '물레는 ㅇ, 굽칼은 ㄱ. 공방은 한글 천지예요.'] },
+    { k: 'water', on: md === 322, title: '세계 물의 날', sub: '물레도 분수도 물 덕분이에요', fx: 'water', lines: ['세계 물의 날이에요. 분수가 오늘따라 신났어요.', '흙에 물 한 방울, 그게 시작이에요.'] },
+    { k: 'earth', on: md === 422, title: '지구의 날', sub: '밤 8시, 10분 동안 불을 꺼요', fx: 'lightsout', lines: ['지구의 날이에요. 밤 8시에 10분만 불 끄고 백자 등만 켜 둘게요.'] },
+    { k: 'bee', on: md === 520, title: '세계 꿀벌의 날', sub: '정원에 꿀벌이 놀러 왔어요', fx: 'bees', lines: ['세계 꿀벌의 날이에요. 정원에 꿀벌이 왔어요. 쏘지 않아요, 아마도.'] },
+    { k: 'tea', on: md === 521, title: '세계 차의 날', sub: '찻자리에 한 잔 따라 두었어요', fx: 'tea', lines: ['세계 차의 날이에요. 찻자리에 한 잔 미리 따라 뒀어요.', '차는 기다리는 맛이에요. 흙처럼요.'] },
+    { k: 'birdday', on: md === secondSat(5) || md === secondSat(10), title: '세계 철새의 날', sub: '오늘은 새가 자주 와요', fx: 'birds', lines: ['세계 철새의 날이에요. 오늘은 새가 자주 와요. 도감 채우기 좋은 날!'] },
+    { k: 'dog', on: md === 826, title: '세계 강아지의 날', sub: '김탄의 날', fx: 'dog', lines: ['세계 강아지의 날이에요. 김탄 밥그릇에 간식 넣어 뒀어요.', '오늘의 주인공은 김탄이에요. 쓰다듬어 줘요.'] },
+    { k: 'kind', on: md === 1113, title: '세계 친절의 날', sub: '오늘 자판기는 칭찬만 해요', fx: 'kind', lines: ['세계 친절의 날이에요. 오늘 만든 그릇, 다 예뻐요.'] },
+    { k: 'tteok', on: md === 1111, title: '가래떡데이', sub: '오늘 가마 앞 간식은 가래떡', fx: 'tteok', lines: ['11월 11일은 가래떡데이예요. 가마 앞에 가래떡 구워 놨어요.'] },
+    { k: 'soil', on: md === 311, title: '흙의 날', sub: '흙을 만지는 날', fx: 'soil', lines: ['오늘은 흙의 날이에요. 흙의 날엔 흙을 만져야죠.', '흙 土 자는 열 十에 한 一이래요. 열 번 만지고 한 번 쉬어요.'] },
+    { k: 'worldsoil', on: md === 1205, title: '세계 토양의 날', sub: '흙 독의 흙이 오늘 바로 익어요', fx: 'sprout', lines: ['세계 토양의 날이에요. 장독에 재워 둔 흙, 오늘은 바로 꺼내도 돼요.'] },
+    { k: 'fire', on: md === 1109, title: '소방의 날', sub: '불멍은 안전하게', fx: 'extinguisher', lines: ['소방의 날이에요. 불멍은 안전하게. 소화기 여기 있어요.', '119의 날이라 11월 9일이래요. 가마 불은 제가 지켜요.'] },
+    { k: 'iron', on: md === 609, title: '철의 날', sub: '굽칼이 반짝 새것이 됐어요', fx: 'iron', lines: ['철의 날이에요. 굽칼을 새로 갈아 뒀어요. 오늘 굽은 매끈할 거예요.'] },
+    { k: 'forest', on: md === 321, title: '세계 산림의 날', sub: '오늘은 도자의 숲의 날', fx: 'forest', lines: ['세계 산림의 날이에요. 도자의 숲도 숲이니까, 오늘은 우리 날이에요.'] },
+    { k: 'arbor', on: md === 405, title: '식목일', sub: '정원에 묘목을 심었어요', fx: 'sapling', lines: ['식목일이에요. 정원에 작은 묘목 심었어요. 내년엔 조금 더 크겠죠.'] },
+    { k: 'craft', on: md === 610, title: '세계 공예의 날', sub: '손으로 만든 모든 것에게', fx: 'craft', lines: [] }
+  ];
+  const ev = LIST.filter(e => q ? e.k === q : e.on); if (!ev.length) return;
+  const glossy = c => new THREE.MeshPhysicalMaterial({ color: C(c), roughness: .25, clearcoat: 1 });
+  const lines = [];
+  let bannerDone = false;
+  const banner = (text, sub, bg = '#3f5b46') => {
+    if (bannerDone || !text) return; bannerDone = true;
+    const tex = canvasTex(1024, 220, (g, W, Hh) => { g.fillStyle = bg; g.fillRect(0, 0, W, Hh); g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 6; g.strokeRect(14, 14, W - 28, Hh - 28); g.fillStyle = '#fbf5ea'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = '700 84px "Gowun Batang", serif'; g.fillText(text, W / 2, sub ? 92 : Hh / 2); if (sub) { g.font = '44px "Gowun Dodum", sans-serif'; g.fillText(sub, W / 2, 170); } });
+    const w = 1.9, h = w * 220 / 1024; mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshStandardMaterial({ map: tex, roughness: .9 }), -1.1, 2.66, -3.89, scene, false);
+    [-1, 1].forEach(s => mesh(new THREE.CylinderGeometry(.003, .003, .3, 4), std('#6b5a48'), -1.1 + s * w * .45, 2.66 + h / 2 + .12, -3.89, scene, false));
+  };
+  const taegeuk = () => canvasTex(300, 200, (g, W, H) => { g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); const cx = W / 2, cy = H / 2, r = 50; g.save(); g.translate(cx, cy); g.rotate(Math.atan2(2, 3)); g.fillStyle = '#c60c30'; g.beginPath(); g.arc(0, 0, r, Math.PI, 0); g.fill(); g.fillStyle = '#003478'; g.beginPath(); g.arc(0, 0, r, 0, Math.PI); g.fill(); g.fillStyle = '#c60c30'; g.beginPath(); g.arc(-r / 2, 0, r / 2, 0, TAU); g.fill(); g.fillStyle = '#003478'; g.beginPath(); g.arc(r / 2, 0, r / 2, 0, TAU); g.fill(); g.restore();
+    g.fillStyle = '#000'; const tri = (x, y, a, pat) => { g.save(); g.translate(x, y); g.rotate(a); pat.forEach((p, i) => { const yy = (i - 1) * 13; if (p) g.fillRect(-22, yy - 4, 44, 8); else { g.fillRect(-22, yy - 4, 19, 8); g.fillRect(3, yy - 4, 19, 8); } }); g.restore(); };
+    const a = Math.atan2(2, 3); tri(cx - 95, cy - 55, -a + Math.PI / 2 - .2, [1, 1, 1]); tri(cx + 95, cy + 55, -a + Math.PI / 2 - .2, [0, 0, 0]); tri(cx + 95, cy - 55, a + Math.PI / 2 + .2, [0, 1, 0]); tri(cx - 95, cy + 55, a + Math.PI / 2 + .2, [1, 0, 1]); });
+  const flag = (half) => { const g = new THREE.Group(); g.position.set(3.4, 0, -4.45); scene.add(g); mesh(new THREE.CylinderGeometry(.015, .018, 2.6, 8), std('#c9c4b8', .4, { metalness: .6 }), 0, 1.3, 0, g); mesh(new THREE.SphereGeometry(.035, 10, 8), std('#d7ad4e', .3, { metalness: .8 }), 0, 2.62, 0, g); const f = mesh(new THREE.PlaneGeometry(.66, .44, 12, 4), new THREE.MeshStandardMaterial({ map: taegeuk(), side: THREE.DoubleSide, roughness: .9 }), .34, half ? 1.95 : 2.36, 0, g, false); f.rotation.y = Math.PI; const p = f.geometry.attributes.position, base = p.array.slice(); requestAnimationFrame(function wv(now) { const t = now / 1000; for (let i = 0; i < p.count; i++) { const x = base[i * 3]; p.setZ(i, Math.sin(t * 2.4 + x * 7) * .025 * (x + .33)); } p.needsUpdate = true; requestAnimationFrame(wv); }); };
+  ev.forEach(e => {
+    if (e.flag) flag(e.flag === 2);
+    if (!e.quiet) banner(e.title, e.sub, e.flag ? '#2d3a5a' : e.k === 'children' || e.k === 'buddha' ? '#b8302a' : '#3f5b46');
+    lines.push(...e.lines);
+    const fx = e.fx;
+    if (fx === 'pinwheel') { const P = []; [[1.4, -6], [3.4, -7.2], [0.6, -8.8], [3.2, -9.6], [1.8, -11.2]].forEach(([x, z], i) => { mesh(new THREE.CylinderGeometry(.008, .008, .7, 6), std('#c8a874'), x, .35, z); const w = new THREE.Group(); w.position.set(x, .72, z + .02); scene.add(w); ['#c8382c', '#e2b53b', '#2c4f9a', '#4f6b4a'].forEach((c, k) => { const b = mesh(new THREE.ConeGeometry(.06, .12, 3), std(c, .6, { side: THREE.DoubleSide }), 0, .05, 0, w, false); b.scale.z = .15; b.rotation.z = 0; const pv = new THREE.Group(); w.add(pv); pv.rotation.z = k * Math.PI / 2; pv.add(b); }); P.push(w); }); requestAnimationFrame(function pw(now) { P.forEach((w, i) => w.rotation.z = now / 300 + i); requestAnimationFrame(pw); }); }
+    if (fx === 'lotus') { const cols = ['#e8a3ad', '#f2d27a', '#a9d4a0', '#9fc3e6', '#f4f0e8']; for (let i = 0; i < 18; i++) { const x = 1.0 + Math.sin(i * .7) * 1.6, z = -5 - i * .5; const l = mesh(new THREE.SphereGeometry(.09, 12, 8), new THREE.MeshStandardMaterial({ color: C(cols[i % 5]), emissive: C(cols[i % 5]), emissiveIntensity: .7, roughness: .8 }), x, 1.7 + Math.sin(i) * .1, z, scene, false); l.scale.y = .85; mesh(new THREE.CylinderGeometry(.002, .002, .4, 4), std('#6b5a48'), x, 1.98, z, scene, false); } }
+    if (fx === 'water' && typeof stream !== 'undefined') { stream.scale.set(1.4, 1, 1.4); }
+    if (fx === 'lightsout') { requestAnimationFrame(function lo() { const k = new Date(Date.now() + 9 * 3600e3), m = k.getUTCHours() * 60 + k.getUTCMinutes(), off = q === 'earth' || (m >= 1200 && m < 1210); hemi.intensity = off ? .08 : hemi.intensity; if (off) { sun.intensity = Math.min(sun.intensity, .05); fill.intensity = .03; if (!lo.said) { lo.said = 1; showHint('지구의 날 소등 중이에요. 백자 등만 켜 둘게요.', 6); } } requestAnimationFrame(lo); }); }
+    if (fx === 'bees') { const B = []; for (let i = 0; i < 6; i++) { const b = new THREE.Group(); scene.add(b); const bd = mesh(new THREE.SphereGeometry(.025, 10, 8), std('#e2b53b', .5), 0, 0, 0, b, false); bd.scale.set(1.4, 1, 1); mesh(new THREE.TorusGeometry(.021, .006, 6, 14), std('#2b2522'), 0, 0, 0, b, false).rotation.y = Math.PI / 2; [-1, 1].forEach(s => { const w = mesh(new THREE.CircleGeometry(.02, 10), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .6, side: THREE.DoubleSide }), 0, .02, s * .012, b, false); w.rotation.x = Math.PI / 2; b.userData['w' + s] = w; }); B.push({ b, cx: rand(.5, 4), cz: rand(-9, -5), r: rand(.3, .9), ph: rand(0, 6), sp: rand(.6, 1.2) }); } requestAnimationFrame(function bz(now) { const t = now / 1000; B.forEach(o => { const a = t * o.sp + o.ph; o.b.position.set(o.cx + Math.cos(a) * o.r, .6 + Math.sin(a * 2.3) * .2, o.cz + Math.sin(a) * o.r); o.b.rotation.y = -a; const f = Math.sin(t * 60) * .8; o.b.userData['w-1'].rotation.z = f; o.b.userData.w1.rotation.z = -f; }); requestAnimationFrame(bz); }); }
+    if (fx === 'tea') { setTimeout(() => { try { TEAS.fill = 1; } catch (e) {} }, 1500); }
+    if (fx === 'birds' || fx === 'forest') { let last = performance.now(); requestAnimationFrame(function bb(now) { const dt = Math.min(.05, (now - last) / 1000); last = now; try { if (BIRD.state === 'away') BIRD.t -= dt * 1.5; } catch (e) {} requestAnimationFrame(bb); }); }
+    if (fx === 'forest') { GTREES.forEach(t => t.fol && t.fol.forEach(m => m.scale.multiplyScalar(1.12))); }
+    if (fx === 'dog') { const h = new THREE.Group(); h.position.set(0, .11, .02); dogHead.add(h); mesh(new THREE.ConeGeometry(.045, .12, 14), std('#e2b53b', .5), 0, .05, 0, h); mesh(new THREE.SphereGeometry(.015, 8, 6), std('#c8382c', .5), 0, .115, 0, h); try { BOWLS.food.amt = 1; } catch (e) {} }
+    if (fx === 'kind') { try { const kind = ['오늘 물레 솜씨, 제가 본 중에 제일이에요.', '그 그릇, 굽이 참 단정해요.', '오늘 와 줘서 고마워요.', '천천히 해도 괜찮아요. 잘하고 있어요.', '흙이 당신 손을 좋아하네요.', '김탄이 당신 발소리를 알아들어요.', '유약 고르는 눈이 좋아요.', '오늘 만든 건 다 예뻐요. 진짜로요.']; TEACH_LINES.splice(0, TEACH_LINES.length, ...kind, ...kind); } catch (e) {} }
+    if (fx === 'tteok') { try { SNACKS.forEach(s => s.w = s.id === 'tteok' ? 100 : 0); const t = SNACKS.find(s => s.id === 'tteok'); t.line = '가래떡데이! 가마에 구운 가래떡이에요. 쫀득쫀득.'; setTimeout(() => { try { maybeSnack(true); } catch (e) {} }, 3000); } catch (e) {} }
+    if (fx === 'soil') { $('#enter').addEventListener('click', () => setTimeout(() => toast('오늘은 흙의 날. 물레에서 흙 만져 볼까요?', '물레로', () => go('wheel'), 8), 14000)); }
+    if (fx === 'sprout') { for (let i = 0; i < 40; i++) { const x = rand(.4, 4), z = rand(-12, -5); const s = mesh(new THREE.ConeGeometry(.012, .06, 5), std('#7fa85a', .8), x, .03, z, scene, false); s.rotation.z = rand(-.3, .3); } try { if (typeof AGE !== 'undefined' && AGE) { AGE.at = 0; saveAge(); } } catch (e) {} }
+    if (fx === 'extinguisher') { const g = new THREE.Group(); g.position.set(KILN.x + 1.5, 0, KILN.z - .6); scene.add(g); mesh(new THREE.CylinderGeometry(.06, .06, .34, 16), std('#c8282c', .35, { metalness: .2 }), 0, .17, 0, g); mesh(new THREE.CylinderGeometry(.018, .02, .05, 10), std('#2b2522', .5), 0, .36, 0, g); const hs = mesh(new THREE.TorusGeometry(.05, .007, 6, 14, Math.PI), std('#2b2522', .6), .03, .34, 0, g); hs.rotation.z = -.5; if (typeof BOXES !== 'undefined') BOXES.push([KILN.x + 1.4, KILN.x + 1.6, KILN.z - .7, KILN.z - .5]); }
+    if (fx === 'iron') { try { trimTool.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.metalness = 1; o.material.roughness = .12; } }); } catch (e) {} }
+    if (fx === 'sapling') { const g = new THREE.Group(); g.position.set(3.9, 0, -8.4); scene.add(g); mesh(new THREE.CylinderGeometry(.015, .02, .5, 6), std('#6b4a32'), 0, .25, 0, g); for (let i = 0; i < 6; i++) { const l = mesh(new THREE.SphereGeometry(.06, 8, 6), std('#7fa85a', .8, { flatShading: true }), Math.cos(i) * .07, .45 + (i % 3) * .06, Math.sin(i) * .07, g); l.scale.y = .6; } mesh(new THREE.CylinderGeometry(.12, .14, .04, 14), std('#5a4636', 1), 0, .02, 0, g); }
+    if (fx === 'craft') { [[SHELF.x + .9, 2.4, (SHELF.z0 + SHELF.z1) / 2, SHELF.x, (SHELF.z0 + SHELF.z1) / 2], [CAB.x + .9, 2.4, CAB.z, CAB.x, CAB.z]].forEach(([x, y, z, tx, tz]) => { const s = new THREE.SpotLight(C('#fff1d6'), 1.2, 5, .7, .5, 1.5); s.position.set(x, y, z); s.target.position.set(tx, .9, tz); scene.add(s, s.target); }); const pickIt = () => { const L = (VEND.items || []).filter(i => i.name); return L.length ? L[Math.floor(Math.random() * L.length)] : null; }; setTimeout(() => { const it = pickIt(); lines.unshift(it ? `세계 공예의 날이에요. 오늘 제가 고른 작품은 '${it.name}'. 작품장에서 보고 가요.` : '세계 공예의 날이에요. 손으로 만든 건 다 귀해요.'); }, 2500); }
+    if (e.quiet) { try { TCH.nextLine = 1e9; } catch (x) {} }
+  });
+  setTimeout(() => {
+    if (!lines.length) return;
+    try { if (!ev.some(e => e.quiet || e.fx === 'kind')) lines.forEach(l => TEACH_LINES.push(l, l)); } catch (e) {}
+    $('#enter').addEventListener('click', () => setTimeout(() => teacherSay(lines[0], 6), 11000));
+  }, 3000);
+})();
 </script>
 
 
