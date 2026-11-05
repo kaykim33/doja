@@ -5789,6 +5789,110 @@ const FROST = (() => {
 })();
 { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'wind' && FROST.cold && FROST.cold()) ui.acts.append(btn(FROST.draw ? '서리 그림 그만' : '서리에 그림 그리기', FROST.toggle)); }; }
 
+/* ── 현관문 + 도어락 (세계관 확장용) ── */
+const FDOOR = (() => {
+  const P = { x: -3.45, z: 3.995 }, W = .96, H = 2.1;
+  const g = new THREE.Group(); g.position.set(P.x, 0, P.z); scene.add(g);
+  const frame = std('#5e4030', .7), wood = std('#8a5a3a', .6), woodD = std('#73492e', .65), brass = std('#b8935a', .3, { metalness: .8 }), black = std('#1d1f22', .25, { metalness: .2 });
+  mesh(rbox(.07, H + .05, .07, .01), frame, -W / 2 - .03, (H + .05) / 2, -.02, g); mesh(rbox(.07, H + .05, .07, .01), frame, W / 2 + .03, (H + .05) / 2, -.02, g); mesh(rbox(W + .13, .07, .07, .01), frame, 0, H + .03, -.02, g);
+  // 문 너머 빛 (닫혀 있으면 문짝이 가림)
+  const glowM = new THREE.MeshBasicMaterial({ color: C('#fff4dc'), transparent: true, opacity: 0 });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(W, H), glowM); glow.position.set(0, H / 2, -.003); glow.rotation.y = Math.PI; g.add(glow);
+  const light = new THREE.PointLight(0xffe2b0, 0, 4, 2); light.position.set(0, 1.4, -.4); g.add(light);
+  const hinge = new THREE.Group(); hinge.position.set(W / 2, 0, -.005); g.add(hinge);
+  const panel = new THREE.Group(); panel.position.set(-W / 2, 0, 0); hinge.add(panel);
+  mesh(rbox(W - .02, H - .02, .05, .01), wood, 0, H / 2, -.03, panel);
+  [[-.2, 1.55, .3, .62], [.2, 1.55, .3, .62], [-.2, .55, .3, .7], [.2, .55, .3, .7]].forEach(([x, y, w, h]) => mesh(rbox(w, h, .012, .006), woodD, x, y, -.06, panel));
+  const lever = new THREE.Group(); lever.position.set(-W / 2 + .1, 1.0, -.07); panel.add(lever);
+  mesh(new THREE.CylinderGeometry(.025, .025, .02, 14), brass, 0, 0, 0, lever).rotation.x = Math.PI / 2; mesh(rbox(.13, .022, .022, .008), brass, .06, 0, -.02, lever);
+  const lock = new THREE.Group(); lock.position.set(-W / 2 + .1, 1.22, -.07); panel.add(lock);
+  mesh(rbox(.075, .22, .024, .01), black, 0, 0, 0, lock);
+  const keyM = new THREE.MeshBasicMaterial({ color: C('#2a3340') }); const keys = [];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) { const k = new THREE.Mesh(new THREE.CircleGeometry(.0075, 10), keyM); k.position.set((c - 1) * .02, .06 - r * .028, -.0125); k.rotation.y = Math.PI; lock.add(k); keys.push(k); }
+  const ledM = new THREE.MeshBasicMaterial({ color: C('#3a3f45') }); const led = new THREE.Mesh(new THREE.CircleGeometry(.006, 10), ledM); led.position.set(0, .094, -.0125); led.rotation.y = Math.PI; lock.add(led);
+  const mat = mesh(new THREE.BoxGeometry(.9, .015, .55), std('#9b8a72', .95), 0, .008, -.42, g, false);
+  const hit = mesh(new THREE.BoxGeometry(W + .1, H, .3), new THREE.MeshBasicMaterial({ visible: false }), 0, H / 2, -.1, g, false); hit.userData.click = { act: 'frontdoor' }; clickables.push(hit);
+  const o = { P, open: 0, target: 0, lit: 0, closeAt: 0 };
+  const LIT = C('#7fd3ff'), DIM = C('#2a3340'), GREEN = C('#7dffb0'), RED = C('#ff6a5a'), OFF = C('#3a3f45');
+  o.light = (v, col) => { o.lit = v; keyM.color.copy(v ? LIT : DIM); ledM.color.copy(col === 'ok' ? GREEN : col === 'no' ? RED : OFF); };
+  let last = performance.now();
+  (function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (o.closeAt && now > o.closeAt) { o.closeAt = 0; o.target = 0; setTimeout(() => thunk(), 900); }
+    o.open += (o.target - o.open) * Math.min(1, dt * 2.2); hinge.rotation.y = -o.open * 1.5; glowM.opacity = Math.min(1, o.open * 1.4); light.intensity = o.open * 1.6; })(last);
+  function thunk() { if (!AU.ctx) return; const t = AU.ctx.currentTime; noiseHit(t, 'lowpass', 260, .8, .09 * MIX.amb, .003, .12, .1); tone(t + .1, 1400, .02 * MIX.amb, .002, .05, 'square', .2); tone(t + .17, 1100, .02 * MIX.amb, .002, .05, 'square', .2); }
+  o.unlock = () => { o.target = 1; o.closeAt = performance.now() + 7000; if (AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t + .55, 'lowpass', 300, .7, .06 * MIX.amb, .005, .4, .1); } };
+  return o;
+})();
+const LOCK = (() => {
+  const st = document.createElement('style');
+  st.textContent = `#lockM{position:fixed;inset:0;z-index:60;background:rgba(18,16,14,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+#lockM .pad{width:min(300px,92vw);background:linear-gradient(#24272b,#141619);border-radius:28px;padding:26px 24px 22px;box-shadow:0 24px 60px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08);color:#cfe9ff;font-family:"Gowun Dodum",sans-serif;position:relative}
+#lockM .scr{height:58px;border-radius:12px;background:#0b0d0f;display:flex;align-items:center;justify-content:center;gap:12px;font-size:15px;color:#8fd6ff;margin-bottom:18px;letter-spacing:.04em}
+#lockM .scr i{width:12px;height:12px;border-radius:50%;background:#8fd6ff;box-shadow:0 0 10px #59c4ff;display:block}
+#lockM .scr i.e{background:#1f2a33;box-shadow:none}
+#lockM .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+#lockM .keys button{height:58px;border-radius:50%;border:0;background:transparent;color:#3d4650;font-size:24px;font-family:inherit;transition:color .15s,text-shadow .15s}
+#lockM.lit .keys button{color:#bfe6ff;text-shadow:0 0 12px rgba(100,200,255,.85)}
+#lockM .keys button:active{background:rgba(120,200,255,.12)}
+#lockM .row{display:flex;justify-content:space-between;align-items:center;margin-top:14px;font-size:12.5px;color:#6f7a84}
+#lockM .row button{border:0;background:rgba(255,255,255,.08);color:#cfe9ff;border-radius:12px;height:30px;padding:0 12px;font:inherit;font-size:12.5px}
+#lockM .say{position:absolute;left:0;right:0;top:calc(100% + 14px);text-align:center;color:#f6f1e8;font-size:14px;line-height:1.5;text-shadow:0 1px 4px rgba(0,0,0,.6)}`;
+  document.head.appendChild(st);
+  let wrap = null, code = '', mode = 'enter', busy = false, fails = 0, lockUntil = 0;
+  function beep(f = 1760, d = .07) { if (!AU || !AU.ctx) return; tone(AU.ctx.currentTime, f, .05 * MIX.amb, .002, d, 'square', .25); }
+  function melody(ok) { if (!AU || !AU.ctx) return; const t = AU.ctx.currentTime; (ok ? [1319, 1568, 1760, 2093] : [440, 440, 440]).forEach((f, i) => tone(t + i * (ok ? .11 : .16), f, .05 * MIX.amb, .002, ok ? .14 : .12, 'square', .25)); }
+  function scr(text) { const s = wrap.querySelector('.scr'); if (text) { s.textContent = text; return; } s.innerHTML = [0, 1, 2, 3].map(i => `<i class="${i < code.length ? '' : 'e'}"></i>`).join(''); }
+  function say(t) { wrap.querySelector('.say').textContent = t || ''; }
+  function open() {
+    if (wrap) return; try { closeSheet && closeSheet(); } catch (e) {}
+    code = ''; mode = 'enter';
+    wrap = document.createElement('div'); wrap.id = 'lockM';
+    wrap.innerHTML = `<div class="pad"><div class="scr"></div><div class="keys">${['1', '2', '3', '4', '5', '6', '7', '8', '9', '*', '0', '#'].map(k => `<button type="button" data-k="${k}" aria-label="${k === '*' ? '지우기' : k === '#' ? '확인' : k}">${k}</button>`).join('')}</div><div class="row"><span>현관 도어락</span><span class="adm"></span><button type="button" class="cl">닫기</button></div><div class="say"></div></div>`;
+    document.body.append(wrap);
+    wrap.addEventListener('pointerdown', e => { if (e.target === wrap) close(); });
+    wrap.querySelector('.cl').onclick = close;
+    wrap.querySelectorAll('.keys button').forEach(b => b.onclick = () => press(b.dataset.k));
+    if (BOARD && BOARD.admin) { const a = document.createElement('button'); a.type = 'button'; a.textContent = '비번 설정'; a.onclick = () => { mode = 'set'; code = ''; scr('새 비번 4자리 + #'); say('관리자 모드: 새 비밀번호를 눌러요.'); }; wrap.querySelector('.adm').append(a); }
+    // 손대면 불이 들어와요
+    setTimeout(() => { if (!wrap) return; wrap.classList.add('lit'); FDOOR.light(1); scr(); beep(2093, .05); }, 120);
+    addEventListener('keydown', onKey);
+    say(pick(['손을 대니 숫자가 반짝 켜져요.', '현관문이에요. 이 너머는… 아직 비밀이에요.', '네 자리 숫자를 누르고 #.']));
+  }
+  function onKey(e) { if (!wrap) return; if (/^\d$/.test(e.key)) press(e.key); else if (e.key === 'Enter' || e.key === '#') press('#'); else if (e.key === 'Backspace' || e.key === '*') press('*'); else if (e.key === 'Escape') close(); }
+  function close() { if (!wrap) return; removeEventListener('keydown', onKey); wrap.remove(); wrap = null; FDOOR.light(0); }
+  async function press(k) {
+    if (!wrap || busy) return;
+    if (Date.now() < lockUntil) { beep(440, .2); scr(`잠시 후 다시 (${Math.ceil((lockUntil - Date.now()) / 1000)}초)`); return; }
+    if (k === '*') { code = ''; beep(1320); scr(mode === 'set' ? '새 비번 4자리 + #' : ''); return; }
+    if (k === '#') { if (code.length === 4) submit(); else { beep(660, .15); } return; }
+    if (code.length >= 4) { beep(660, .1); return; }
+    code += k; beep(); scr();
+  }
+  async function submit() {
+    busy = true; const c = code; code = '';
+    try {
+      if (mode === 'set') {
+        const r = await (await fetch('/api/door', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: c, set: true }) })).json();
+        if (r.ok) { melody(true); scr('비번을 바꿨어요'); say('새 비밀번호가 저장됐어요. 아무한테도 안 보여요.'); mode = 'enter'; } else { melody(false); scr('저장 실패'); }
+        return;
+      }
+      scr('확인 중…');
+      const r = await (await fetch('/api/door', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: c }) })).json();
+      if (!r.set) { melody(false); FDOOR.light(1, 'no'); scr('아직 잠긴 문이에요'); say(pick(['비밀번호가 아직 정해지지 않은 문이에요. 언젠가 열려요.', '자판기: “그 문은 아직이에요. 저도 열쇠가 없어요.”'])); return; }
+      if (r.ok) { fails = 0; melody(true); FDOOR.light(1, 'ok'); scr('열렸어요'); setTimeout(() => { close(); FDOOR.unlock(); toast('문이 열렸어요. 너머는 아직 공사 중이에요. 곧 이어질 거예요.', null, null, 6); try { teacherSay(pick(['어떻게 아셨어요? …아무한테도 말하지 마요.', '거긴 아직 짓는 중이에요. 먼지 조심하세요.']), 5); } catch (e) {} }, 650); return; }
+      fails++; melody(false); FDOOR.light(1, 'no'); scr('다시 입력하세요');
+      if (fails >= 3) { lockUntil = Date.now() + 30000; fails = 0; say(pick(['자판기: “비번은 저도 몰라요. 진짜로요.”', '자판기: “힌트는 없어요. 세계관은 원래 천천히 열려요.”', '자판기: “문 두드리는 소리가 너무 성실하네요.”'])); scr('30초 뒤에 다시'); }
+      else say('삐삐삐. 틀렸어요.');
+      setTimeout(() => { if (wrap) { FDOOR.light(1); scr(); } }, 1200);
+    } catch (e) { scr('연결이 안 돼요'); } finally { busy = false; }
+  }
+  return { open, close };
+})();
+{ const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click;
+  if (c && c.act === 'frontdoor') { const tx = FDOOR.P.x, tz = FDOOR.P.z - .75, near = S.mode !== 'walk' || Math.hypot(WALK.x - tx, WALK.z - tz) < 1.4; if (near) { LOCK.open(); return; } WALK.goal = { x: tx, z: tz, run: () => LOCK.open() }; markGoal(tx, tz); return; }
+  return tf.apply(this, arguments); }; }
+{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'frontdoor', x: FDOOR.P.x, z: FDOOR.P.z - .7, r: .5, text: '현관문 도어락', run: () => LOCK.open() }); return Z; }; }
+
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);

@@ -30,9 +30,10 @@ const putDoc = (env, path, data) => { const i = path.lastIndexOf('/'); return en
 const merge = (a, b) => { const o = Object.assign({}, a); for (const [k, v] of Object.entries(b || {})) { if (v && typeof v === 'object' && !Array.isArray(v) && v.__delete__) delete o[k]; else if (v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) o[k] = merge(o[k], v); else o[k] = v; } return o; };
 
 // 누가 무엇을 쓸 수 있나
-function canRead(coll, admin) { return coll.split('/')[0] === 'visits' ? admin : true; }
+function canRead(coll, admin) { const t = coll.split('/')[0]; return t === 'secret' ? false : t === 'visits' ? admin : true; }
 function canWrite(op, coll, id, admin, data) {
   const top = coll.split('/')[0];
+  if (top === 'secret') return false;
   if (admin) return true;
   if (top === 'gallery' || top === 'tiles') return op === 'add' && JSON.stringify(data || {}).length <= LIMITS[top];
   if (top === 'visits') return (op === 'set' || op === 'update') && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(data || {}).length <= LIMITS.visits;
@@ -81,6 +82,16 @@ export async function onRequest(ctx) {
   const admin = await isAdmin(req, env);
 
   if (route === 'me') return J({ admin });
+  // 현관 도어락: 비번은 해시로만 저장, 누구도 읽을 수 없음
+  if (route === 'door' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({})), code = String(b.code || '');
+    const hash = async c => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('doja-door:' + c)))].map(x => x.toString(16).padStart(2, '0')).join('');
+    const cur = await getDoc(env, 'secret/door');
+    if (b.set) { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^\d{4}$/.test(code)) return J({ error: 'bad_code' }, 400); await putDoc(env, 'secret/door', { h: await hash(code), at: Date.now() }); return J({ ok: true, set: true }); }
+    if (!cur || !cur.h) return J({ ok: false, set: false });
+    await new Promise(r => setTimeout(r, 400));
+    return J({ ok: /^\d{4}$/.test(code) && (await hash(code)) === cur.h, set: true });
+  }
   if (route === 'login' && req.method === 'POST') {
     const b = await req.json().catch(() => ({})); const t = await adminToken(env);
     if (!t || String(b.pw || '') !== env.ADMIN_PASSWORD) return J({ error: 'wrong' }, 401);
