@@ -5528,7 +5528,7 @@ const BING = (() => {
   let M = null;
   function open() {
     if (M && !M.closed) return; try { closeSheet && closeSheet(); } catch (e) {}
-    M = MINI.make('bingM', '빙수 물레'); M.bx.style.background = '#e8f1f2'; BOX3D.spin = true; M.onClose = () => { BOX3D.spin = false; };
+    M = MINI.make('bingM', '물레 빙수'); M.bx.style.background = '#e8f1f2'; BOX3D.spin = true; M.onClose = () => { BOX3D.spin = false; };
     try { teacherSay(SAY_IN(), 4); } catch (e) {}
     M.panel('얼음 깎아 빙수', [[`자판기: “${esc(SAY_IN())}”`, 'say q'], ['냉동실 얼음을 물레에 올렸어요. 화면을 누르고 위아래로 끌어 칼날을 대요. 초록 칸 안에서 누르면 눈처럼 곱게, 너무 세게 누르면 얼음 알갱이가 굵어져요.'], [`지금까지 만든 빙수 ${MINI.count('soyoho_bing')}그릇`, 'say']], [['깎기 시작', start]]);
     draw0();
@@ -5641,54 +5641,62 @@ const BOX3D = (() => {
 // ---------- 냉장고 피자 → 가마 ----------
 const PIZZA = (() => {
   const ING = [['치즈', '#f3d88a', 'shred'], ['토마토', '#d9483b', 'slice'], ['버섯', '#c9b49a', 'mush'], ['양파', '#efe3f0', 'ring'], ['피망', '#4f9a45', 'ring'], ['옥수수', '#f2cc3c', 'dot'], ['감자', '#e9cf8e', 'cube'], ['바질', '#3f7d3a', 'leaf'], ['김치', '#c8452f', 'shred'], ['곶감', '#c8642e', 'slice'], ['떡', '#f3ece0', 'cube'], ['햄', '#e7a0a0', 'slice'], ['고구마', '#e0a14c', 'cube']];
-  const SAY_IN = ['도자기 굽던 가마에 피자라니. 장작이 좋아하겠네요.', '냉장고 파먹기의 끝은 결국 피자예요.', '가마는 원래 1250도인데… 피자는 그보단 덜 뜨거워도 돼요.', '반죽은 흙이랑 똑같아요. 너무 치대면 질겨지고, 덜 치대면 찢어져요.'];
+  const SAY_IN = ['접시 물레 차듯이 도우를 펴 보세요. 원리는 똑같아요.', '물레로 피자 도우 펴기, 해 보고 싶었죠? 저도요.', '도자기 굽던 가마에 피자라니. 장작이 좋아하겠네요.', '냉장고 파먹기의 끝은 결국 피자예요.', '가마는 원래 1250도인데… 피자는 그보단 덜 뜨거워도 돼요.', '반죽은 흙이랑 똑같아요. 너무 치대면 질겨지고, 덜 치대면 찢어져요.'];
   let M = null;
   function open() {
     if (M && !M.closed) return; try { closeSheet && closeSheet(); } catch (e) {}
-    M = MINI.make('pizzaM', '냉장고 피자'); M.bx.style.background = '#efe6d8';
-    M.panel('냉장고 재료로 피자', [[`자판기: “${esc(pick(SAY_IN))}”`, 'say q'], ['반죽을 둥글게 펴고, 소스를 바르고, 냉장고 재료를 올려서 가마에 구워요. 꺼내는 타이밍이 전부예요.'], [`지금까지 구운 피자 ${MINI.count('soyoho_pizza')}판`, 'say']], [['반죽 펴기', start]]);
+    M = MINI.make('pizzaM', '물레 피자'); M.bx.style.background = '#efe6d8';
+    M.panel('물레로 펴는 피자', [[`자판기: “${esc(pick(SAY_IN))}”`, 'say q'], ['물레에 반죽을 얹어 돌리면서 둥글게 펴고, 소스도 물레 띠처럼 둘러요. 냉장고 재료를 올려 가마에 구워요. 꺼내는 타이밍이 전부예요.'], [`지금까지 구운 피자 ${MINI.count('soyoho_pizza')}판`, 'say']], [['물레에 반죽 얹기', start]]);
     draw0();
   }
   const R0 = 150;
   function draw0() { const { g, W, H } = M; table(g, W, H); }
-  function table(g, W, H) { g.fillStyle = '#b98a5c'; g.fillRect(0, 0, W, H); g.strokeStyle = 'rgba(80,50,30,.12)'; g.lineWidth = 2; for (let y = 20; y < H; y += 46) { g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * .3, y + 8, W * .6, y - 8, W, y + 4); g.stroke(); } g.fillStyle = 'rgba(255,255,255,.18)'; g.beginPath(); g.ellipse(W / 2, H * .46, R0 * 1.25, R0 * 1.15, 0, 0, TAU); g.fill(); }
+  function table(g, W, H) { g.fillStyle = '#b98a5c'; g.fillRect(0, 0, W, H); g.strokeStyle = 'rgba(80,50,30,.12)'; g.lineWidth = 2; for (let y = 20; y < H; y += 46) { g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(W * .3, y + 8, W * .6, y - 8, W, y + 4); g.stroke(); }
+    // 물레 머리
+    const cx = W / 2, cy = H * .46, rr = R0 * 1.18, rot = M.G ? M.G.rot : 0; g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.arc(cx + 5, cy + 8, rr, 0, TAU); g.fill();
+    const gr = g.createRadialGradient(cx - rr * .3, cy - rr * .3, 10, cx, cy, rr); gr.addColorStop(0, '#b7b1aa'); gr.addColorStop(1, '#8e8882'); g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; for (let k = 1; k < 5; k++) { g.beginPath(); g.arc(cx, cy, rr * k / 5, 0, TAU); g.stroke(); }
+    g.fillStyle = 'rgba(70,60,50,.35)'; for (let i = 0; i < 14; i++) { const a = rot + i * 2.39, d = rr * (.3 + (i * 37 % 60) / 100); g.beginPath(); g.arc(cx + Math.cos(a) * d, cy + Math.sin(a) * d, 2.2, 0, TAU); g.fill(); }
+    g.strokeStyle = 'rgba(40,30,25,.25)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.stroke(); }
   function start() {
-    const N = 36, G = M.G = { phase: 'dough', r: new Array(N).fill(46), sauce: document.createElement('canvas'), items: [], sel: null, bake: 0, drag: null, t: 0, fire: 0 };
-    G.sauce.width = G.sauce.height = 400; G.sg = G.sauce.getContext('2d');
+    const N = 36, G = M.G = { phase: 'dough', r: new Array(N).fill(58), sauce: document.createElement('canvas'), items: [], sel: null, bake: 0, drag: null, t: 0, fire: 0, rot: 0, w: 0, ll: null };
+    G.sauce.width = G.sauce.height = 400; G.sg = G.sauce.getContext('2d'); BOX3D.spin = true; M.onClose = () => { BOX3D.spin = false; };
     phaseDough();
-    const cv = M.cv; cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); G.drag = M.pos(e); down(G.drag); };
-    cv.onpointermove = e => { if (!G.drag) return; const p = M.pos(e); move(G.drag, p); G.drag = p; };
-    cv.onpointerup = cv.onpointercancel = () => { G.drag = null; };
+    const cv = M.cv; cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); G.drag = M.pos(e); G.ll = null; if (G.phase === 'top') place(G.drag); };
+    cv.onpointermove = e => { if (G.drag) G.drag = M.pos(e); };
+    cv.onpointerup = cv.onpointercancel = () => { G.drag = null; G.ll = null; };
     M.loop(dt => { step(dt); draw(); });
   }
   const C0 = () => ({ x: M.W / 2, y: M.H * .46 });
-  function phaseDough() { const G = M.G; G.phase = 'dough'; M.tip.textContent = '반죽 가장자리를 바깥쪽으로 쓸어서 둥글게 펴요.'; M.buttons([['다 폈어요', phaseSauce, 'main']]); }
-  function phaseSauce() { const G = M.G; G.phase = 'sauce'; M.tip.textContent = '손가락으로 토마토소스를 발라요.'; M.buttons([['다음: 재료', phaseTop, 'main']]); }
-  function phaseTop() { const G = M.G; G.phase = 'top'; M.tip.textContent = '냉장고 재료를 골라 반죽 위를 눌러요. 치즈는 꼭!'; const bs = ING.map(t => [t[0], el => { G.sel = t; [...M.bar.children].forEach(b => b.classList.toggle('on', b === el)); }]); bs.push(['가마에 넣기', phaseBake, 'main']); M.buttons(bs); }
-  function phaseBake() { const G = M.G; G.phase = 'bake'; G.bake = 0; M.tip.textContent = '가마 속에서 익고 있어요. 딱 좋을 때 꺼내요!'; M.buttons([['꺼내기', finish, 'main']]); if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 400, .7, .1 * MIX.amb, .02, .6, .3); }
+  const toLocal = (p, G) => { const c = C0(), x = p.x - c.x, y = p.y - c.y, ca = Math.cos(-G.rot), sa = Math.sin(-G.rot); return { x: x * ca - y * sa, y: x * sa + y * ca }; };
+  function phaseDough() { const G = M.G; G.phase = 'dough'; M.tip.textContent = '물레가 돌아요. 반죽 가장자리를 누르고 바깥으로 끌면 빙글빙글 둥글게 펴져요.'; M.buttons([['다 폈어요', phaseSauce, 'main']]); }
+  function phaseSauce() { const G = M.G; G.phase = 'sauce'; M.tip.textContent = '돌아가는 반죽에 소스를 대요. 가운데서 바깥으로 천천히 옮기면 띠가 그려져요.'; M.buttons([['다음: 재료', phaseTop, 'main']]); }
+  function phaseTop() { const G = M.G; G.phase = 'top'; M.tip.textContent = '물레를 멈췄어요. 냉장고 재료를 골라 반죽 위를 눌러요. 치즈는 꼭!'; const bs = ING.map(t => [t[0], el => { G.sel = t; [...M.bar.children].forEach(b => b.classList.toggle('on', b === el)); }]); bs.push(['가마에 넣기', phaseBake, 'main']); M.buttons(bs); }
+  function phaseBake() { const G = M.G; G.phase = 'bake'; G.bake = 0; BOX3D.spin = false; M.tip.textContent = '물레에서 가마로 옮겼어요. 딱 좋을 때 꺼내요!'; M.buttons([['꺼내기', finish, 'main']]); if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 400, .7, .1 * MIX.amb, .02, .6, .3); }
   function rAt(a) { const G = M.G, N = G.r.length, f = ((a / TAU) % 1 + 1) % 1 * N, i = Math.floor(f), t = f - i; return G.r[i % N] * (1 - t) + G.r[(i + 1) % N] * t; }
-  function down(p) { const G = M.G; if (G.phase === 'top') place(p); else if (G.phase === 'sauce') paint(p, p); }
-  function move(a, b) {
-    const G = M.G, c = C0();
-    if (G.phase === 'dough') { const ang = Math.atan2(b.y - c.y, b.x - c.x), d = Math.hypot(b.x - c.x, b.y - c.y), out = (Math.hypot(b.x - c.x, b.y - c.y) - Math.hypot(a.x - c.x, a.y - c.y)); const N = G.r.length, i = Math.round(((ang / TAU) % 1 + 1) % 1 * N) % N; const da = Math.hypot(a.x - c.x, a.y - c.y); if (da < G.r[i] + 24 && out > 0) { for (let k = -5; k <= 5; k++) { const j = (i + k + N) % N; G.r[j] = Math.min(R0 * 1.08, Math.max(G.r[j], Math.min(d, G.r[j] + out * .55) * (1 - Math.abs(k) * .035))); } if (Math.random() < .2 && AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 300, .6, .03 * MIX.amb, .01, .12, .05); } }
-    else if (G.phase === 'sauce') paint(a, b);
-  }
-  function paint(a, b) { const G = M.G, c = C0(), s = 400 / (R0 * 2.4), sg = G.sg; sg.strokeStyle = '#c23b2b'; sg.lineCap = 'round'; sg.lineWidth = 42 * s; sg.beginPath(); sg.moveTo(200 + (a.x - c.x) * s, 200 + (a.y - c.y) * s); sg.lineTo(200 + (b.x - c.x) * s + .1, 200 + (b.y - c.y) * s); sg.stroke(); }
+  function paint(a, b) { const s = 400 / (R0 * 2.4), sg = M.G.sg; sg.strokeStyle = '#c23b2b'; sg.lineCap = 'round'; sg.lineWidth = 26 * s; sg.beginPath(); sg.moveTo(200 + a.x * s, 200 + a.y * s); sg.lineTo(200 + b.x * s + .1, 200 + b.y * s); sg.stroke(); }
   function place(p) {
-    const G = M.G, c = C0(); if (!G.sel) { M.tip.textContent = '먼저 아래에서 재료를 골라요.'; return; }
-    const ang = Math.atan2(p.y - c.y, p.x - c.x), d = Math.hypot(p.x - c.x, p.y - c.y); if (d > rAt(ang) - 8) { M.tip.textContent = '반죽 위에 올려요. 테이블은 먹으면 안 돼요.'; return; }
+    const G = M.G; if (!G.sel) { M.tip.textContent = '먼저 아래에서 재료를 골라요.'; return; }
+    const q = toLocal(p, G), d = Math.hypot(q.x, q.y); if (d > rAt(Math.atan2(q.y, q.x)) - 8) { M.tip.textContent = '반죽 위에 올려요. 물레는 먹으면 안 돼요.'; return; }
     const t = G.sel, n = t[2] === 'shred' ? 10 : t[2] === 'dot' ? 6 : 1;
-    for (let i = 0; i < n; i++) { const a2 = rand(0, TAU), rr = n > 1 ? rand(0, 22) : 0, x = p.x + Math.cos(a2) * rr - c.x, y = p.y + Math.sin(a2) * rr - c.y; if (Math.hypot(x, y) > rAt(Math.atan2(y, x)) - 6) continue; G.items.push({ n: t[0], c: t[1], s: t[2], x, y, rot: rand(0, TAU), z: rand(.8, 1.2) }); }
+    for (let i = 0; i < n; i++) { const a2 = rand(0, TAU), rr = n > 1 ? rand(0, 22) : 0, x = q.x + Math.cos(a2) * rr, y = q.y + Math.sin(a2) * rr; if (Math.hypot(x, y) > rAt(Math.atan2(y, x)) - 6) continue; G.items.push({ n: t[0], c: t[1], s: t[2], x, y, rot: rand(0, TAU), z: rand(.8, 1.2) }); }
     if (AU && AU.ctx) tone(AU.ctx.currentTime, rand(300, 450), .025 * MIX.amb, .002, .06, 'sine', .3);
   }
   function step(dt) {
     const G = M.G; G.t += dt;
-    if (G.phase === 'dough') { const r = G.r, N = r.length, n2 = r.slice(); for (let i = 0; i < N; i++) n2[i] = r[i] * .8 + (r[(i + N - 1) % N] + r[(i + 1) % N]) * .1; G.r = n2; }
+    const wt = G.phase === 'dough' || G.phase === 'sauce' ? 4.2 : 0; G.w += (wt - G.w) * Math.min(1, dt * 2); G.rot += G.w * dt;
+    if (G.w > .5 && AU && AU.ctx && Math.random() < dt * 3) noiseHit(AU.ctx.currentTime, 'lowpass', 180, .5, .015 * MIX.wheel, .05, .3, .1);
+    if (G.phase === 'dough') {
+      if (G.drag) { const c = C0(), d = Math.hypot(G.drag.x - c.x, G.drag.y - c.y), q = toLocal(G.drag, G), la = Math.atan2(q.y, q.x), N = G.r.length, i = Math.round(((la / TAU) % 1 + 1) % 1 * N) % N;
+        if (d > G.r[i] - 14 && d < G.r[i] + 60) { const tgt = Math.min(R0 * 1.08, d); for (let k = -4; k <= 4; k++) { const j = (i + k + N) % N; if (G.r[j] < tgt) G.r[j] = Math.min(tgt, G.r[j] + dt * 120 * (1 - Math.abs(k) / 5)); } if (Math.random() < dt * 5 && AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 300, .6, .03 * MIX.amb, .01, .12, .05); } }
+      const r = G.r, N = r.length, n2 = r.slice(); for (let i = 0; i < N; i++) n2[i] = r[i] * .8 + (r[(i + N - 1) % N] + r[(i + 1) % N]) * .1; G.r = n2;
+    }
+    if (G.phase === 'sauce' && G.drag) { const q = toLocal(G.drag, G); if (Math.hypot(q.x, q.y) < rAt(Math.atan2(q.y, q.x)) - 6) { paint(G.ll || q, q); G.ll = q; } else G.ll = null; }
     if (G.phase === 'bake') { G.bake += dt * .12; G.fire = .6 + .4 * Math.sin(G.t * 9) * Math.sin(G.t * 3.3); if (Math.random() < dt * 6 && AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'bandpass', rand(1500, 3500), 3, .02 * MIX.fire, .001, .02, .02); if (G.bake > 1.35) finish(); }
   }
   function brown(hex, k) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g2 = n >> 8 & 255, b = n & 255; const tr = [120, 70, 30], bl = [40, 28, 22]; const mix = (v, t, f) => Math.round(v + (t - v) * f); const k1 = Math.min(1, k), k2 = Math.max(0, k - 1) * 2.5; r = mix(mix(r, tr[0], k1 * .55), bl[0], Math.min(1, k2)); g2 = mix(mix(g2, tr[1], k1 * .55), bl[1], Math.min(1, k2)); b = mix(mix(b, tr[2], k1 * .55), bl[2], Math.min(1, k2)); return `rgb(${r},${g2},${b})`; }
   function pizzaAt(g, cx, cy, sc, bake) {
-    const G = M.G, N = G.r.length; g.save(); g.translate(cx, cy); g.scale(sc, sc);
+    const G = M.G, N = G.r.length; g.save(); g.translate(cx, cy); g.scale(sc, sc); g.rotate(G.rot || 0);
     const path = (inset) => { g.beginPath(); for (let i = 0; i <= 72; i++) { const a = i / 72 * TAU, r = rAt(a) - inset; i ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r); } g.closePath(); };
     g.fillStyle = 'rgba(0,0,0,.12)'; g.save(); g.translate(4, 6); path(0); g.fill(); g.restore();
     g.fillStyle = brown('#ead6ad', bake * .9); path(0); g.fill();
@@ -5739,11 +5747,12 @@ const PIZZA = (() => {
   return { open, get m() { return M; } };
 })();
 // 입구: 냉동실·빙수 물레 → 빙수, 냉장고 열면 피자 안내
+function kitchenWheel() { const K = MINI.make('kpick', '부엌 물레'); K.bx.style.background = '#efe6d8'; K.bx.style.height = 'min(460px,100%)'; K.panel('부엌 물레', [[`자판기: “${esc(pick(['흙만 올리란 법 있나요. 물레는 원래 돌리는 거예요.', '오늘은 흙 말고 뭘 돌려 볼까요?', '현실에선 혼나요. 여기선 괜찮아요.']))}”`, 'say q'], ['얼음을 얹으면 빙수, 반죽을 얹으면 피자.']], [['얼음 얹어 빙수', () => { K.close(); BING.open(); }], ['반죽 얹어 피자', () => { K.close(); PIZZA.open(); }]]); }
 { const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click;
-  if (c && (c.act === 'bingsu' || c.act === 'freezer')) { const tx = BOX3D.P.x, tz = BOX3D.P.z - .65, near = S.mode !== 'walk' || Math.hypot(WALK.x - tx, WALK.z - tz) < 1.5; if (near) { BING.open(); return; } WALK.goal = { x: tx, z: tz, run: () => BING.open() }; markGoal(tx, tz); return; }
+  if (c && (c.act === 'bingsu' || c.act === 'freezer')) { const fn = c.act === 'freezer' ? () => BING.open() : kitchenWheel, tx = BOX3D.P.x, tz = BOX3D.P.z - .65, near = S.mode !== 'walk' || Math.hypot(WALK.x - tx, WALK.z - tz) < 1.5; if (near) { fn(); return; } WALK.goal = { x: tx, z: tz, run: fn }; markGoal(tx, tz); return; }
   return tf.apply(this, arguments); }; }
 { const tg = toggleFridge; toggleFridge = function () { const was = FRIDGE.target; const r = tg.apply(this, arguments); if (!was && FRIDGE.target) setTimeout(() => toast('냉장고에 재료가 좀 남았네요. 피자 구워 볼까요?', '피자 만들기', () => PIZZA.open(), 8), 700); return r; }; }
-{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'bingsu', x: BOX3D.P.x, z: BOX3D.P.z - .65, r: .45, text: '빙수 물레 (얼음 깎기)', run: () => BING.open() }); if (FRIDGE.target) Z.push({ id: 'pizza', x: FRIDGE.x + .45, z: FRIDGE.z - .8, r: .4, text: '냉장고 재료로 피자 만들기', run: () => PIZZA.open() }); return Z; }; }
+{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'bingsu', x: BOX3D.P.x, z: BOX3D.P.z - .65, r: .45, text: '부엌 물레 (빙수·피자)', run: kitchenWheel }); if (FRIDGE.target) Z.push({ id: 'pizza', x: FRIDGE.x + .45, z: FRIDGE.z - .8, r: .4, text: '냉장고 재료로 피자 만들기', run: () => PIZZA.open() }); return Z; }; }
 
 /* ── 서리 그림: 추운 날 창가 유리 ── */
 const FROST = (() => {
