@@ -1373,7 +1373,7 @@ function renderActs_old() {
     case 'fountain': A('꽃잎 띄우기', floatPetal); A('동전 던지기', tossCoin); break;
     case 'tea': A('차 따르기', pourTea); A('한 모금', sipTea); break;
     case 'wind': A(S.breath ? '숨 고르기 끄기' : '숨 고르기', () => { S.breath = !S.breath; renderActs(); if (S.breath) showHint('바람이 불어올 때 들이쉬고, 잦아들 때 내쉬어요.', 8); }); break;
-    case 'shelf': A('타일에 남기기', () => openTile(-1, true)); break;
+    case 'shelf': A('타일 벽 보기', () => openTile(-1)); break;
     case 'overview': break;
   }
 }
@@ -1725,7 +1725,7 @@ function tapAt_old(x, y) {
   if (c.act === 'teacher') teacherSheet();
   else if (c.act === 'dog') dogYawn();
   else if (c.act === 'bird') { SFX.chirp(); S.birdInk = BIRD.sp; showHint(`${BIRD.sp.name} 색을 담았어요.`); }
-  else if (c.act === 'tile') { if (S.station === 'board' || S.station === 'shelf' || S.mode === 'roam') openTile(c.idx); else go('board'); }
+  else if (c.act === 'tile') { openTile(c.idx); }
   else if (c.act === 'piece') { if (S.station !== 'shelf') { go('shelf'); return; } pieceCard(c.idx); }
   else if (c.act === 'potato') { sweetPotato.visible = false; showHint('군고구마! 자판기가 넣어 둔 거래요. 김탄이랑 반씩.', 5); SFX.crackle(AU.ctx && AU.ctx.currentTime, true); }
   else if (S.mode === 'walk') {
@@ -2346,7 +2346,7 @@ function tileSrc(d) { return typeof d === 'string' ? d : d && d.img; }
 function applyTile(i) { const src = tileSrc(TILES[i]); if (!src) return; const img = new Image(); img.onload = () => { const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.needsUpdate = true; tiles[i].material.map = t; tiles[i].material.needsUpdate = true; }; img.src = src; }
 function openTile(i, fresh) {
   const d = i >= 0 ? TILE_SHOW[i] : null;
-  if (d && !fresh && !openTile.single) { closeSheet(); tileWall(); return; }
+  if (!fresh && !openTile.single) { closeSheet(); tileWall(); return; }
   if (d && !fresh) { closeSheet(); const z = zoomBox(); const im = el('img', 'zimg'); im.src = d.img; im.alt = '타일 그림'; const cap = el('div', 'zcap'); cap.textContent = `${d.by || '누군가'} · ${d.at || ''}`; const row = el('div', 'zrow'); const del = tileDelBtn(d); if (del && del.tagName === 'BUTTON') { const o = del.onclick; del.onclick = e => { z.remove(); o && o.call(del, e); }; row.append(del); } row.append(btn('새 타일 그리기', () => { z.remove(); openTile(-1, true); }, 'chip on')); z.append(im, cap, row); return; }
   TM.idx = -1; $('#tileM').hidden = false; tileClear(); $('#tTxt').value = '';
 }
@@ -2488,7 +2488,7 @@ function tapAt_h(x, y) {
   tapAt_old(x, y);
 }
 function tileWall() {
-  const z = zoomBox(); z.append(Object.assign(el('div', 'zt'), { textContent: `벽 타일 ${TILE_SHOW.length}장` }));
+  const z = zoomBox(); z.append(Object.assign(el('div', 'zt'), { textContent: TILE_SHOW.length ? `벽 타일 ${TILE_SHOW.length}장` : '아직 비어 있는 타일 벽' }));
   const gr = el('div', 'zgrid'); TILE_SHOW.forEach((d, i) => { if (!d || !d.img) return; const b = el('button'); b.type = 'button'; b.setAttribute('aria-label', `${d.by || '누군가'}의 타일`); const im = el('img'); im.src = d.img; im.alt = ''; b.append(im); b.onclick = () => { z.remove(); openTile.single = true; try { openTile(i); } finally { openTile.single = false; } const zz = document.querySelector('.zoomV:last-of-type'); if (zz) { const bk = el('button', 'back'); bk.type = 'button'; bk.textContent = '← 전체'; bk.onclick = () => { zz.remove(); tileWall(); }; zz.append(bk); } }; gr.append(b); });
   const row = el('div', 'zrow'); row.append(btn('새 타일 그리기', () => { z.remove(); openTile(-1, true); }, 'chip on')); z.append(gr, row);
 }
@@ -4504,7 +4504,7 @@ function tapAt(x, y) {
 }
 function renderActs() {
   renderActs_k();
-  if (S.station === 'board') ui.acts.append(btn('타일에 남기기', () => openTile(-1, true)));
+  if (S.station === 'board') ui.acts.append(btn('타일 벽 보기', () => openTile(-1)));
   if (S.station === 'garden' || S.station === 'wind') ui.acts.append(btn(`새 도감 ${DEX.length}/${BIRDS.length}`, dexSheet));
   if (S.station === 'fountain') ui.acts.append(btn('물고기 톡', () => { FISH.forEach((f, i) => setTimeout(() => fishDart(i), i * 180)); showHint(pick(FISH_LINES), 3); }));
 }
