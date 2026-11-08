@@ -127,6 +127,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--celadon);outlin
 #rail::-webkit-scrollbar{display:none}
 #rail .chip{height:36px;font-size:13px}
 #rail .chip.dim{opacity:.55;font-size:12px}
+.zoomV{position:fixed;inset:0;z-index:70;background:rgba(24,21,18,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.zoomV .zx{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;border:0;border-radius:18px;height:36px;padding:0 14px;background:rgba(255,255,255,.9);font:inherit;font-size:14px;color:#2d2924}
+.zoomV .zimg{width:min(92vw,78vh,640px);aspect-ratio:1;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.45);background:#fff;object-fit:contain}
+.zoomV .zcap{color:#f4efe6;font-size:14px;text-align:center}
+.zoomV .zrow{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.zoomV .paper{width:min(640px,100%);max-height:min(82vh,100%);overflow:auto;background:#fbf8f2;border-radius:16px;padding:26px 24px;box-shadow:0 20px 60px rgba(0,0,0,.45);color:#2d2924}
+.zoomV .paper h2{margin:0 0 6px;font-family:var(--display);font-size:26px;color:#c8643a}
+.zoomV .paper .n{padding:18px 0;border-top:1px solid #e7dfd2}
+.zoomV .paper .n:first-of-type{border-top:0}
+.zoomV .paper .nt{font-family:var(--display);font-weight:700;font-size:21px;line-height:1.4}
+.zoomV .paper .nb{font-size:17px;line-height:1.75;white-space:pre-wrap;margin:8px 0}
+.zoomV .paper .na{font-size:13px;color:#8a7f72}
 .tileView{width:min(64vw,220px);aspect-ratio:1;border-radius:8px;display:block;box-shadow:0 0 0 1px var(--line)}
 .stampView{width:72px;height:72px;border-radius:50%;background:#e9e1d4;display:block}
 #posterV{position:fixed;inset:0;z-index:30;background:rgba(30,24,18,.86);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
@@ -2322,7 +2334,7 @@ function tileSrc(d) { return typeof d === 'string' ? d : d && d.img; }
 function applyTile(i) { const src = tileSrc(TILES[i]); if (!src) return; const img = new Image(); img.onload = () => { const t = new THREE.Texture(img); t.encoding = THREE.sRGBEncoding; t.needsUpdate = true; tiles[i].material.map = t; tiles[i].material.needsUpdate = true; }; img.src = src; }
 function openTile(i, fresh) {
   const d = i >= 0 ? TILE_SHOW[i] : null;
-  if (d && !fresh) { const im = el('img', 'tileView'); im.src = d.img; im.alt = '타일 그림'; sheet('벽 타일', `${d.by || '누군가'} · ${d.at || ''}`, [im], [tileDelBtn(d), btn('새 타일 그리기', () => { closeSheet(); openTile(-1, true); }), btn('닫기', closeSheet, 'chip on')]); return; }
+  if (d && !fresh) { closeSheet(); const z = zoomBox(); const im = el('img', 'zimg'); im.src = d.img; im.alt = '타일 그림'; const cap = el('div', 'zcap'); cap.textContent = `${d.by || '누군가'} · ${d.at || ''}`; const row = el('div', 'zrow'); const del = tileDelBtn(d); if (del && del.tagName === 'BUTTON') { const o = del.onclick; del.onclick = e => { z.remove(); o && o.call(del, e); }; row.append(del); } row.append(btn('새 타일 그리기', () => { z.remove(); openTile(-1, true); }, 'chip on')); z.append(im, cap, row); return; }
   TM.idx = -1; $('#tileM').hidden = false; tileClear(); $('#tTxt').value = '';
 }
 $('#tSave').onclick = () => {
@@ -2462,8 +2474,14 @@ function tapAt_h(x, y) {
   if (c && (c.act === 'notice' || c.act === 'poster')) { if (S.station !== 'board') { S.mode === 'walk' ? walkTo('board') : go('board'); return; } if (c.act === 'notice') noticeSheet(); else posterView(c.idx); return; }
   tapAt_old(x, y);
 }
+function zoomBox() { const z = el('div', 'zoomV'); const x = el('button', 'zx'); x.type = 'button'; x.textContent = '닫기'; x.onclick = () => z.remove(); z.append(x); z.addEventListener('click', e => { if (e.target === z) z.remove(); }); const k = e => { if (e.key === 'Escape') { z.remove(); removeEventListener('keydown', k); } }; addEventListener('keydown', k); document.body.append(z); return z; }
 function noticeSheet() {
   const list = BOARD.data.notices || [];
+  { closeSheet(); const z = zoomBox(), pp = el('div', 'paper'); pp.append(el('h2', null, '공방 소식'));
+    if (!list.length) { const e = el('div', 'nb'); e.textContent = '아직 붙은 공지가 없어요.'; pp.append(e); }
+    list.forEach(n => { const d = el('div', 'n'), t = el('div', 'nt'), b = el('div', 'nb'), a = el('div', 'na'); t.textContent = n.title || '공지'; b.textContent = n.body || ''; a.textContent = n.at || ''; d.append(t, b, a); pp.append(d); });
+    z.append(pp); if (BOARD.admin) { const row = el('div', 'zrow'); row.append(btn('게시판 관리', () => { z.remove(); openAdmin(); }, 'chip on')); z.append(row); }
+    try { if (list[0]) store.set('seenNotice', list[0].id); } catch (e) {} return; }
   const items = list.map(n => { const d = el('div'); d.style.cssText = 'width:100%;padding:8px 2px;border-top:1px solid var(--line)'; const t = el('div'); t.style.cssText = 'font-family:var(--display);font-weight:700;font-size:15px'; t.textContent = n.title || '공지'; const b = el('div'); b.style.cssText = 'font-size:13.5px;line-height:1.6;white-space:pre-wrap;margin:3px 0'; b.textContent = n.body || ''; const a = el('div'); a.style.cssText = 'font-size:11.5px;color:var(--ink-2)'; a.textContent = n.at || ''; d.append(t, b, a); return d; });
   sheet('공방 소식', list.length ? null : '아직 붙은 공지가 없어요.', items, [BOARD.admin ? btn('게시판 관리', () => { closeSheet(); openAdmin(); }) : el('span'), btn('닫기', closeSheet, 'chip on')]);
   try { if (list[0]) store.set('seenNotice', list[0].id); } catch (e) {}
