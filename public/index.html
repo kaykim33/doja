@@ -3043,7 +3043,7 @@ function galParse(snap) {
     if (typeof d.stampImg === 'string' && d.stampImg.length < 120000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.stampImg)) pc.stampImg = d.stampImg;
     if (type === 'lathe') { pc.prof = gpts(d.prof, 400); if (pc.prof.length < 3) return null; pc.plate = !!d.plate; pc.k = gnum(d.k, .4, 1.5, 1); }
     else if (type === 'slab') { pc.poly = gpts(d.poly, 200); if (pc.poly.length < 3) return null; pc.th = gnum(d.th, .05, 1, .3); pc.lift = gnum(d.lift, 0, 1, 0); }
-    else pc.kind = MINIS[d.kind] ? d.kind : 'moon';
+    else pc.kind = (MINIS[d.kind] || (typeof MOLDK !== 'undefined' && MOLDK[d.kind])) ? d.kind : 'moon';
     return pc;
   } catch (e) { return null; }
 }
@@ -6002,6 +6002,132 @@ const SECRET = (() => {
   if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('자판기의 비밀 작업실이에요. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
   SR.lamp.intensity = 1.2 + Math.sin(now / 900) * .04 + (Math.random() < .004 ? -.5 : 0); })(last); }
 { const zf = zones; zones = function () { const Z = zf(); if (WALK.z > 4.0) { Object.entries(SR.spots).forEach(([id, p]) => Z.push({ id: 'secret', x: p[0], z: p[1], r: .45, text: { note: '노트 보기', pile: '실패작 더미', bowl: '첫 그릇', photo: '사진 보기', tiles: '유약 견본판', chest: '잠긴 상자', door2: '초록 문' }[id], run: () => SECRET.show(id) })); Z.push({ id: 'out', x: FDOOR.P.x, z: SR.z0 + .35, r: .45, text: '공방으로 나가기', run: () => FDOOR.unlock() }); } return Z; }; }
+
+/* ── 석고틀 찍기 (작업대) ── */
+var MOLDK = {
+  m_shiitake: { n: '표고버섯', s: 'autumn', p: [[0, 0], [0, 14], [30, 12], [36, 15], [38, 54], [44, 62], [58, 60], [74, 46], [84, 24], [88, 0]] },
+  m_button: { n: '양송이', s: 'autumn', p: [[0, 0], [0, 18], [32, 16], [38, 30], [42, 46], [56, 50], [74, 43], [88, 26], [94, 0]] },
+  m_parasol: { n: '갓버섯', s: 'autumn', p: [[0, 0], [0, 10], [68, 8], [72, 10], [74, 58], [78, 64], [84, 56], [94, 36], [102, 14], [106, 0]] },
+  m_acorn: { n: '도토리', s: 'autumn', p: [[0, 0], [3, 10], [16, 26], [34, 34], [50, 34], [56, 40], [68, 40], [76, 32], [82, 14], [84, 4], [92, 3], [94, 0]] },
+  m_chestnut: { n: '밤', s: 'autumn', p: [[0, 0], [0, 30], [12, 44], [30, 46], [50, 38], [68, 22], [82, 8], [88, 0]] },
+  m_tangerine: { n: '귤', s: 'winter', p: [[0, 0], [0, 22], [10, 40], [28, 48], [46, 42], [58, 24], [60, 8], [68, 5], [70, 0]] },
+  m_snowman: { n: '눈사람', s: 'winter', p: [[0, 0], [0, 26], [14, 38], [30, 36], [40, 24], [44, 22], [54, 28], [68, 26], [78, 14], [82, 0]] },
+  m_bell: { n: '종', s: 'winter', p: [[0, 0], [0, 44], [6, 44], [28, 32], [54, 26], [68, 18], [74, 8], [82, 5], [84, 0]] },
+  m_bud: { n: '꽃봉오리', s: 'spring', p: [[0, 0], [0, 8], [20, 8], [24, 14], [40, 26], [60, 26], [76, 16], [88, 4], [94, 0]] },
+  m_berry: { n: '딸기', s: 'spring', p: [[0, 0], [2, 6], [20, 22], [44, 32], [58, 32], [64, 28], [66, 12], [72, 10], [74, 0]] },
+  m_conch: { n: '소라', s: 'summer', p: [[0, 0], [0, 6], [20, 14], [40, 30], [56, 34], [70, 28], [84, 18], [100, 8], [110, 0]] },
+  m_drop: { n: '물방울', s: 'summer', p: [[0, 0], [0, 18], [10, 32], [26, 36], [44, 28], [62, 14], [80, 4], [88, 0]] }
+};
+{ const mm = miniMesh; miniMesh = function (kind, mat) {
+  const M = MOLDK[kind]; if (!M) return mm(kind, mat);
+  const top = M.p[M.p.length - 1][0] || 90, k = .07 / top, g = new THREE.Group();
+  const pts = M.p.map(([y, r]) => new THREE.Vector2(Math.max(.0001, r * k), y * k));
+  const m = new THREE.Mesh(new THREE.LatheGeometry(pts, 40), mat); m.castShadow = true; g.add(m);
+  if (kind === 'm_shiitake' || kind === 'm_parasol') { for (let i = 0; i < 7; i++) { const a = i * 2.4, r = (i % 3 + 1) * .007; const d = new THREE.Mesh(new THREE.SphereGeometry(.0035, 6, 4), mat); d.position.set(Math.cos(a) * r, (kind === 'm_shiitake' ? 84 : 102) * k, Math.sin(a) * r); g.add(d); } }
+  return g; }; }
+const MOLD = (() => {
+  const SEA = { spring: '봄', summer: '여름', autumn: '가을', winter: '겨울' };
+  const SAY_IN = ['석고는 물을 먹어요. 흙이 마르면서 틀에서 스스로 떨어져요. 기다리는 게 기술이에요.', '틀로 찍는다고 다 똑같진 않아요. 누르는 손이 다르니까요.', '가을엔 버섯이죠. 공방 뒤 산에도 났어요. 먹진 마세요.', '꾹꾹 눌러요. 공기가 갇히면 가마에서 터져요.'];
+  let M = null;
+  function open() {
+    if (M && !M.closed) return; try { closeSheet && closeSheet(); } catch (e) {}
+    M = MINI.make('moldM', '석고틀 찍기'); M.bx.style.background = '#ece6dc';
+    const sn = seasonNow(), list = Object.entries(MOLDK);
+    const p = M.panel(`${SEA[sn] || ''} 석고틀`, [[`자판기: “${esc(pick(SAY_IN))}”`, 'say q'], ['틀을 골라요. 흙을 꾹꾹 눌러 채우고, 석고가 물을 먹을 때까지 기다렸다가 열어요.']], []);
+    const grid = document.createElement('div'); grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:330px';
+    list.forEach(([k, m]) => { const b = document.createElement('button'); b.type = 'button'; const on = m.s === sn; b.textContent = m.n; b.className = 'go' + (on ? '' : ' sub'); b.style.cssText = 'height:40px;padding:0 16px;font-size:15px' + (on ? '' : ';opacity:.45');
+      b.onclick = () => { if (!on) { M.tip.textContent = ''; p.querySelector('.say:last-of-type').textContent = `${m.n} 틀은 ${SEA[m.s]}에 꺼내 둘게요. 지금은 ${SEA[sn]} 틀만 있어요.`; return; } p.remove(); start(k); }; grid.append(b); });
+    p.insertBefore(grid, p.children[2]);
+    drawBg();
+  }
+  const CELL = 5;
+  function geo() { const { W, H } = M, s = Math.min(2.2, (W - 60) / 140, H * .42 / 112), bx = W / 2, by = H * .64; return { W, H, s, bx, by }; }
+  function cavPath(k, dx = 0, dy = 0, sc = 1) { const { s, bx, by } = geo(), P = MOLDK[k].p, path = new Path2D(); P.forEach(([y, r], i) => { const X = bx + dx + r * s * sc, Y = by + dy - y * s * sc; i ? path.lineTo(X, Y) : path.moveTo(bx + dx, Y); if (!i) path.lineTo(X, Y); }); for (let i = P.length - 1; i >= 0; i--) { const [y, r] = P[i]; path.lineTo(bx + dx - r * s * sc, by + dy - y * s * sc); } path.closePath(); return path; }
+  function drawBg() { const { g, W, H } = M; g.fillStyle = '#ece6dc'; g.fillRect(0, 0, W, H); g.fillStyle = '#b08a64'; g.fillRect(0, H * .76, W, H * .24); g.fillStyle = 'rgba(0,0,0,.06)'; g.fillRect(0, H * .76, W, 3); }
+  function start(k) {
+    const { W, H, s, bx, by } = geo(), P = MOLDK[k].p, top = P[P.length - 1][0], maxR = Math.max(...P.map(p => p[1]));
+    const path = cavPath(k), x0 = Math.floor(bx - maxR * s - 4), x1 = Math.ceil(bx + maxR * s + 4), y0 = Math.floor(by - top * s - 30), y1 = Math.ceil(by + 2);
+    const nx = Math.ceil((x1 - x0) / CELL), ny = Math.ceil((y1 - y0) / CELL), cells = new Int8Array(nx * ny).fill(-1); // -1 밖, 0 빈칸, 1 흙, 2 공기
+    const spoutW = 12, sy = by - top * s; let total = 0;
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) { const x = x0 + (i + .5) * CELL, y = y0 + (j + .5) * CELL; if (y < sy - 1 && y > sy - 30 && Math.abs(x - bx) < spoutW) cells[j * nx + i] = 3; else if (M.g.isPointInPath(path, x * (M.cv.width / M.W), y * (M.cv.height / M.H))) { cells[j * nx + i] = 0; total++; } }
+    const G = M.G = { k, phase: 'fill', path, x0, y0, nx, ny, cells, total, clay: Math.round(total * 1.12), drag: null, t: 0, dry: 0, open: 0, bub: 0, shade: [], top, sy };
+    for (let i = 0; i < nx * ny; i++) G.shade.push(rand(-.06, .06));
+    M.tip.textContent = '위쪽 구멍부터 흙을 꾹꾹 눌러 채워요. 깊은 곳부터 채우지 않으면 공기가 갇혀요.';
+    M.buttons([['다 채웠어요', toWait, 'main']]);
+    const cv = M.cv; cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); G.drag = M.pos(e); press(G.drag); };
+    cv.onpointermove = e => { if (!G.drag) return; G.drag = M.pos(e); };
+    cv.onpointerup = cv.onpointercancel = () => { G.drag = null; };
+    M.loop(dt => { step(dt); draw(); });
+  }
+  function idx(x, y) { const G = M.G, i = Math.floor((x - G.x0) / CELL), j = Math.floor((y - G.y0) / CELL); return i < 0 || j < 0 || i >= G.nx || j >= G.ny ? -1 : j * G.nx + i; }
+  function press(p) {
+    const G = M.G; if (G.phase !== 'fill' || G.clay <= 0) return; let n = 0;
+    const adj = c => { const i = c % G.nx, j = (c / G.nx) | 0; return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii >= G.nx || jj >= G.ny) return false; const v = G.cells[jj * G.nx + ii]; return v === 1 || v === 3; }); };
+    // 입구에서 손가락 쪽으로 흙이 밀려 들어가요
+    for (let k = 0; k < 14 && G.clay > 0; k++) { let best = -1, bd = 1e9; for (let c = 0; c < G.cells.length; c++) { if (G.cells[c] !== 0) continue; const x = G.x0 + (c % G.nx + .5) * CELL, y = G.y0 + ((c / G.nx | 0) + .5) * CELL, d = (x - p.x) ** 2 + (y - p.y) ** 2; if (d < bd && adj(c)) { bd = d; best = c; } } if (best < 0) break; G.cells[best] = 1; G.clay--; n++; }
+    if (n) { G.flow = .3; airCheck(); if (AU && AU.ctx && Math.random() < .5) noiseHit(AU.ctx.currentTime, 'lowpass', rand(220, 320), .7, .05 * MIX.amb, .005, .09, .06); }
+  }
+  function airCheck() {
+    const G = M.G, seen = new Uint8Array(G.nx * G.ny), q = [];
+    for (let c = 0; c < G.cells.length; c++) { if (G.cells[c] !== 0) continue; const i = c % G.nx, j = (c / G.nx) | 0; if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, b]) => { const ii = i + a, jj = j + b; return ii >= 0 && jj >= 0 && ii < G.nx && jj < G.ny && G.cells[jj * G.nx + ii] === 3; })) { seen[c] = 1; q.push(c); } }
+    while (q.length) { const c = q.pop(), i = c % G.nx, j = (c / G.nx) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii >= G.nx || jj >= G.ny) return; const d = jj * G.nx + ii; if (!seen[d] && G.cells[d] === 0) { seen[d] = 1; q.push(d); } }); }
+    // 입구와 끊긴 작은 빈자리 = 갇힌 공기 (큰 빈자리는 석고로 천천히 빠져요)
+    let trapped = 0; const done = new Uint8Array(G.cells.length);
+    for (let c = 0; c < G.cells.length; c++) { if (G.cells[c] !== 0 || seen[c] || done[c]) continue; const comp = [c]; done[c] = 1; for (let h = 0; h < comp.length; h++) { const d = comp[h], i = d % G.nx, j = (d / G.nx) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii >= G.nx || jj >= G.ny) return; const e = jj * G.nx + ii; if (!done[e] && !seen[e] && G.cells[e] === 0) { done[e] = 1; comp.push(e); } }); }
+      if (comp.length <= 24) { comp.forEach(e => G.cells[e] = 2); trapped++; } }
+    if (trapped) { G.bub = bubbles(); M.tip.textContent = '앗, 공기가 갇혔어요. 깊은 곳부터 채워야 해요.'; if (AU && AU.ctx) tone(AU.ctx.currentTime, 330, .03 * MIX.amb, .005, .15, 'sine', .3); }
+  }
+  function bubbles() { const G = M.G, seen = new Uint8Array(G.cells.length); let n = 0; for (let c = 0; c < G.cells.length; c++) if (G.cells[c] === 2 && !seen[c]) { n++; const q = [c]; seen[c] = 1; while (q.length) { const d = q.pop(), i = d % G.nx, j = (d / G.nx) | 0; [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b]) => { const ii = i + a, jj = j + b; if (ii < 0 || jj < 0 || ii >= G.nx || jj >= G.ny) return; const e = jj * G.nx + ii; if (!seen[e] && G.cells[e] === 2) { seen[e] = 1; q.push(e); } }); } } return n; }
+  function fillPct() { const G = M.G; let f = 0; for (let c = 0; c < G.cells.length; c++) if (G.cells[c] === 1) f++; return Math.min(100, Math.round(f / G.total * 100)); }
+  function toWait() { const G = M.G; if (G.phase !== 'fill') return; G.fill = fillPct(); G.phase = 'wait'; G.dry = 0; M.tip.textContent = '석고가 물을 먹는 중이에요. 흙과 틀 사이에 틈이 살짝 보이면 열어요.'; M.buttons([['틀 열기', demold, 'main']]); }
+  function step(dt) {
+    const G = M.G; G.t += dt;
+    if (G.phase === 'fill' && G.drag) { G.acc = (G.acc || 0) + dt * 12; while (G.acc >= 1) { G.acc--; press(G.drag); } }
+    G.flow = Math.max(0, (G.flow || 0) - dt);
+    if (G.phase === 'wait') { G.dry += dt / 9; if (G.dry > 1.25) demold(); }
+    if (G.phase === 'open') G.open = Math.min(1, G.open + dt * 1.4);
+  }
+  function demold() { const G = M.G; if (G.phase !== 'wait') return; G.phase = 'open'; G.open = 0; M.buttons([]); M.tip.textContent = ''; if (AU && AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t, 'bandpass', 900, 1.5, .06 * MIX.amb, .005, .2, .1); } setTimeout(result, 1900); }
+  function draw() {
+    const G = M.G, { g, W, H } = M, { s, bx, by } = geo(); drawBg();
+    const dryK = Math.min(1, G.dry), op = G.open * 110;
+    const gap = G.phase === 'wait' && G.dry > .55 ? Math.min(2.5, (G.dry - .55) * 8) : 0;
+    // 석고틀 두 쪽
+    const bw = Math.min(M.W / 2 - 14, 72 * s), bh = G.top * s + 70, top = by - G.top * s - 34;
+    [-1, 1].forEach(side => { g.save(); g.translate(side * op, 0); g.beginPath(); g.rect(side < 0 ? bx - bw : bx, top, bw, bh); g.save(); g.clip(); g.fillStyle = '#f4f1ea'; g.fillRect(bx - bw, top, bw * 2, bh); g.fillStyle = 'rgba(0,0,0,.03)'; for (let i = 0; i < 60; i++) { g.beginPath(); g.arc(bx - bw + (i * 53 % (bw * 2)), top + (i * 37 % bh), 1.5, 0, TAU); g.fill(); }
+      if (G.phase !== 'open' || G.open < .02) { g.fillStyle = `rgba(150,140,128,${.25 + dryK * .35})`; g.fill(G.path); } else { g.fillStyle = 'rgba(120,110,100,.3)'; g.fill(G.path); }
+      g.restore(); g.strokeStyle = 'rgba(80,70,60,.25)'; g.lineWidth = 1.2; g.strokeRect(side < 0 ? bx - bw : bx, top, bw, bh); g.restore(); });
+    g.fillStyle = 'rgba(80,70,60,.18)'; if (!op) g.fillRect(bx - .5, top, 1, bh);
+    // 입구
+    if (G.phase !== 'open') { g.fillStyle = '#cfc6b6'; g.fillRect(bx - 12, top, 24, G.sy - top); if (G.flow > 0 || G.phase === 'fill' && G.drag) { g.fillStyle = 'hsl(30,14%,66%)'; g.fillRect(bx - 7, top, 14, G.sy - top + 2); } }
+    // 흙
+    const clayC = (sh, extra) => { const l = 68 + dryK * 12 + sh * 100 + (extra || 0); return `hsl(30,14%,${l}%)`; };
+    if (G.phase !== 'open') { for (let c = 0; c < G.cells.length; c++) { const v = G.cells[c]; if (v !== 1 && v !== 2) continue; const i = c % G.nx, j = (c / G.nx) | 0, x = G.x0 + i * CELL, y = G.y0 + j * CELL; g.fillStyle = v === 1 ? clayC(G.shade[c]) : 'rgba(200,225,240,.85)'; g.fillRect(x, y, CELL + .5, CELL + .5); } if (gap) { g.save(); g.strokeStyle = 'rgba(60,50,40,.55)'; g.lineWidth = gap; g.stroke(G.path); g.restore(); } }
+    else { // 꺼낸 작품
+      const early = G.dry < .5, late = G.dry > 1.0; g.save(); g.translate(bx, by); if (early) g.transform(1.08, 0, .06, .86, 0, 0); g.translate(-bx, -by);
+      for (let c = 0; c < G.cells.length; c++) { const v = G.cells[c]; if (v !== 1 && v !== 2) continue; const i = c % G.nx, j = (c / G.nx) | 0, x = G.x0 + i * CELL, y = G.y0 + j * CELL; if (y < G.sy - 1) continue; g.fillStyle = v === 1 ? clayC(G.shade[c], 4) : 'rgba(110,95,80,.55)'; g.fillRect(x, y, CELL + .5, CELL + .5); }
+      if (late) { g.strokeStyle = 'rgba(70,50,35,.7)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(bx - 8, by - G.top * s * .7); g.lineTo(bx + 4, by - G.top * s * .5); g.lineTo(bx - 3, by - G.top * s * .3); g.stroke(); }
+      g.restore();
+    }
+    // 남은 흙 덩이
+    if (G.phase === 'fill') { const r = Math.max(4, Math.sqrt(G.clay) * 1.7); g.fillStyle = clayC(0); g.beginPath(); g.ellipse(W - 60, H * .2, r, r * .85, 0, 0, TAU); g.fill(); g.fillStyle = 'rgba(46,42,38,.55)'; g.font = '12px "Gowun Dodum", sans-serif'; g.textAlign = 'center'; g.fillText(`채움 ${fillPct()}%`, W - 60, H * .2 + r + 18); if (G.bub) g.fillText(`기포 ${G.bub}`, W - 60, H * .2 + r + 34); }
+    if (G.phase === 'wait') { const x0 = 40, w0 = W - 80, y0 = H * .82; g.fillStyle = 'rgba(46,42,38,.12)'; g.fillRect(x0, y0, w0, 6); g.fillStyle = 'rgba(120,170,110,.45)'; g.fillRect(x0 + w0 * .55 / 1.25, y0, w0 * .45 / 1.25, 6); g.fillStyle = '#2e2a26'; g.beginPath(); g.arc(x0 + w0 * Math.min(1, G.dry / 1.25), y0 + 3, 6, 0, TAU); g.fill(); g.font = '12px "Gowun Dodum", sans-serif'; g.textAlign = 'left'; g.fillStyle = 'rgba(46,42,38,.6)'; g.fillText('촉촉', x0, y0 - 6); g.textAlign = 'right'; g.fillText('바싹', x0 + w0, y0 - 6); }
+  }
+  function result() {
+    const G = M.G, m = MOLDK[G.k], early = G.dry < .5, late = G.dry > 1.0, fill = G.fill;
+    const tag = early ? '찌그러진 ' : late ? '금 간 ' : fill < 80 ? '이 빠진 ' : '';
+    const name = tag + m.n + (G.bub ? ` (기포 ${G.bub})` : '');
+    const say = early ? pick(['너무 일찍 열었어요. 흙도 마음의 준비가 필요해요.', '말랑할 때 꺼내면 이렇게 주저앉아요. 그것도 귀엽네요.']) : late ? pick(['너무 오래 기다렸어요. 석고가 물을 너무 먹었네요.', '금이 갔어요. 금으로 이어 볼까요? …농담이에요.']) : fill < 80 ? pick(['덜 채웠네요. 한쪽이 비었어요. 그래도 수제 느낌.', '흙을 아끼셨군요. 다음엔 꾹꾹.']) : G.bub ? pick(['공기가 갇혔어요. 가마에서 퐁 하고 터질 수도 있어요. 두근두근.', '기포도 표정이에요.']) : pick(['깔끔하게 떨어졌어요. 석고랑 사이가 좋네요.', '이 정도면 틀 주인도 놀라겠어요.', `${m.n}, 완벽해요. 먹고 싶게 생겼어요. 먹진 마세요.`]);
+    M.panel(name, [[`자판기: “${esc(say)}”`, 'say q'], [`채움 ${fill}% · 기포 ${G.bub}개 · ${early ? '일찍 엶' : late ? '늦게 엶' : '딱 좋게 엶'}`, 'st'], ['유약을 골라 가마에 넣어요.', 'say']], []);
+    const p = M.bx.querySelector('.pan'); p.style.cssText = 'justify-content:flex-end;background:linear-gradient(rgba(246,241,233,0) 0%,rgba(246,241,233,0) 38%,rgba(246,241,233,.94) 52%)';
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:330px';
+    GLAZES.forEach(gl => { const b = document.createElement('button'); b.type = 'button'; b.className = 'go sub'; b.style.cssText = 'height:40px;padding:0 14px;font-size:14px;display:flex;align-items:center;gap:6px'; b.innerHTML = `<span style="width:14px;height:14px;border-radius:50%;background:${gl.c};border:1px solid rgba(0,0,0,.15)"></span>${gl.name}`;
+      b.onclick = () => { KILN_Q.push({ type: 'mini', kind: G.k, glaze: gl.id, by: S.nick, date: new Date().toLocaleDateString('ko-KR'), name }); try { updateRail(); } catch (e) {} SFX.thud(); M.close(); toast(`${name}, 가마에 넣었어요.`, '가마로', () => go('kiln')); }; row.append(b); });
+    p.append(row); const again = document.createElement('button'); again.type = 'button'; again.className = 'go sub'; again.textContent = '다시 찍기'; again.onclick = () => { M.close(); open(); }; p.append(again);
+  }
+  return { open, get m() { return M; } };
+})();
+{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'hand') { const b = btn('석고틀 찍기', () => MOLD.open()); ui.acts.prepend ? ui.acts.append(b) : ui.acts.append(b); } }; }
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
