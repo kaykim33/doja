@@ -3947,7 +3947,7 @@ function renderActs_w() {
   if (S.station === 'kiln' && s === 'winter') A(TEAS.warm ? '찻잔 데우는 중' : '찻잔 데우기', () => { if (TEAS.warm) return; TEAS.warm = 1; WARMCUP.visible = true; SFX.tok(.6); toast('가마 곁에 찻잔을 데워 뒀어요. 찻자리에서 따라 보세요.', '찻자리로', () => go('tea'), 8); renderActs(); });
   if (S.station === 'wind' && s === 'summer') { A('풍경 흔들기', () => { CHIMES.forEach(c => c.kick = 1); chimeRing(1.2); setTimeout(() => chimeRing(.8), 260); }); A(WTH.mode === 'on' ? '비 그치게' : '빗소리 듣기', () => { if (WTH.mode === 'on') { WTH.mode = WTH.prevMode || 'kma'; } else { WTH.prevMode = WTH.mode; WTH.mode = 'on'; } renderActs(); }); }
   if (S.station === 'hand' && s === 'spring' && !S.springHint) { S.springHint = true; showHint('봄이에요. 판을 펴고 \'흔적·도장\'에서 꽃잎을 눌러 작은 접시를 만들어 봐요.', 7); }
-  if (S.station === 'hand' && s === 'autumn' && !S.autumnHint) { S.autumnHint = true; showHint('가을이에요. 낙엽 무늬를 입히거나, 남은 흙으로 버섯 오브제를 빚어 봐요.', 7); }
+  if (S.station === 'hand' && s === 'autumn' && !S.autumnHint) { S.autumnHint = true; showHint('가을이에요. 오른쪽 「석고틀」로 버섯이나 도토리를 찍어 봐요.', 7); }
 }
 $('#enter').addEventListener('click', () => setTimeout(() => { const n = { spring: '봄이에요. 꽃잎을 눌러 작은 접시를 만들어 봐요.', summer: '여름이에요. 창가 처마에 풍경이 달렸어요.', autumn: '가을이에요. 낙엽 무늬와 버섯 오브제를 만들 수 있어요.', winter: '겨울이에요. 가마 곁에서 찻잔을 데울 수 있어요.' }[seasonNow()]; if (n) toast(`도자의 숲은 지금 ${n}`, null, null, 8); }, 7000));
 let cLast = performance.now();
@@ -6127,7 +6127,8 @@ const MOLD = (() => {
   }
   return { open, get m() { return M; } };
 })();
-{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'hand') { const b = btn('석고틀 찍기', () => MOLD.open()); ui.acts.prepend ? ui.acts.append(b) : ui.acts.append(b); } }; }
+{ const ur = updateRail; updateRail = function () { const r = ur.apply(this, arguments); if (S.mode === 'hand' && ui.rail && !ui.rail.querySelector('.moldB')) { const b = btn('석고틀', () => MOLD.open(), 'chip on'); b.classList.add('moldB'); ui.rail.prepend(b); } return r; }; }
+if (S.mode === 'hand') try { updateRail(); } catch (e) {}
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
