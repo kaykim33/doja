@@ -3038,6 +3038,7 @@ function galParse(snap) {
     if (d.name) pc.name = String(d.name).slice(0, 20);
     if (typeof d.stamp === 'string') pc.stamp = d.stamp.slice(0, 12);
     if (d.birdName) pc.birdName = String(d.birdName).slice(0, 12);
+    if (d.raku && typeof d.raku === 'object' && RAKU_S[d.raku.s]) pc.raku = { s: d.raku.s, seed: Math.floor(gnum(d.raku.seed, 0, 1e9, 1)), d: gnum(d.raku.d, 0, 1, .5), c: gnum(d.raku.c, 0, 1, .5), l: gnum(d.raku.l, 0, 1, .5) };
     if (/^#[0-9a-f]{6}$/i.test(d.bird || '')) pc.bird = d.bird;
     if (d.trace && typeof d.trace === 'object') { const tr = {}; ['body', 'belly', 'wing', 'ink', 'spot'].forEach(k => { if (/^#[0-9a-f]{6}$/i.test(d.trace[k] || '')) tr[k] = d.trace[k]; }); if (tr.body && tr.belly && tr.ink) { tr.n = String(d.trace.n || '').slice(0, 12); tr.wing = tr.wing || tr.body; if (['petal', 'maple', 'ginkgo'].includes(d.trace.motif)) tr.motif = d.trace.motif; pc.trace = tr; } }
     if (typeof d.stampImg === 'string' && d.stampImg.length < 120000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.stampImg)) pc.stampImg = d.stampImg;
@@ -6129,6 +6130,128 @@ const MOLD = (() => {
 })();
 { const ur = updateRail; updateRail = function () { const r = ur.apply(this, arguments); if (S.mode === 'hand' && ui.rail && !ui.rail.querySelector('.moldB')) { const b = btn('석고틀', () => MOLD.open(), 'chip on'); b.classList.add('moldB'); ui.rail.prepend(b); } return r; }; }
 if (S.mode === 'hand') try { updateRail(); } catch (e) {}
+
+/* ── 라쿠 소성 (가마 옆) ── */
+const RAKU_S = { crackle: '백색 균열', copper: '구리 러스터', naked: '네이키드', black: '흑라쿠' };
+function rakuRng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function rakuTex(r, w = 512, h = 256) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'), R = rakuRng(r.seed || 1), d = r.d ?? .5, c = r.c ?? .5, l = r.l ?? .5;
+  const crack = (n, col, lw) => { g.strokeStyle = col; g.lineCap = 'round'; for (let i = 0; i < n; i++) { let x = R() * w, y = R() * h, a = R() * TAU; g.lineWidth = lw * (.6 + R() * .8); g.beginPath(); g.moveTo(x, y); const len = 6 + R() * 14; for (let k = 0; k < len; k++) { a += (R() - .5) * 1.1; x += Math.cos(a) * 7; y += Math.sin(a) * 7; g.lineTo(x, y); if (R() < .12) { g.moveTo(x, y); a += (R() < .5 ? 1 : -1) * (1 + R()); } } g.stroke(); } };
+  if (r.s === 'copper') {
+    g.fillStyle = '#4b3328'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 400; i++) { g.fillStyle = `rgba(${R() < .5 ? '20,14,10' : '120,80,55'},${.15 + R() * .2})`; g.beginPath(); g.arc(R() * w, R() * h, 2 + R() * 10, 0, TAU); g.fill(); }
+    const cols = ['#2fb3a5', '#c84c8c', '#e3a83a', '#d4552f', '#6a5bd6', '#3fa86a'];
+    for (let i = 0; i < 6 + l * 28; i++) { const x = R() * w, y = R() * h, rr = 14 + R() * 50, gr = g.createRadialGradient(x, y, 0, x, y, rr), cc = cols[Math.floor(R() * cols.length)]; gr.addColorStop(0, cc + 'cc'); gr.addColorStop(.6, cc + '55'); gr.addColorStop(1, cc + '00'); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+    if (c > .6) { g.fillStyle = `rgba(10,8,6,${(c - .6) * .8})`; g.fillRect(0, 0, w, h); }
+  } else if (r.s === 'black') {
+    g.fillStyle = '#1b1716'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${R() < .3 ? '90,60,40' : '60,55,52'},${.1 + R() * .2})`; g.beginPath(); g.ellipse(R() * w, R() * h, 4 + R() * 18, 2 + R() * 6, R() * 3, 0, TAU); g.fill(); }
+    if (l > .4) for (let i = 0; i < l * 10; i++) { const x = R() * w, y = R() * h, gr = g.createRadialGradient(x, y, 0, x, y, 30); gr.addColorStop(0, 'rgba(160,120,70,.35)'); gr.addColorStop(1, 'rgba(160,120,70,0)'); g.fillStyle = gr; g.fillRect(x - 30, y - 30, 60, 60); }
+  } else if (r.s === 'naked') {
+    g.fillStyle = '#e6e1d8'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 10 + c * 40; i++) { const x = R() * w, y = R() * h, rr = 10 + R() * 60, gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, `rgba(30,28,26,${.25 + c * .4})`); gr.addColorStop(1, 'rgba(30,28,26,0)'); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+    crack(30 + d * 140, `rgba(20,18,16,${.55 + c * .4})`, 1.1);
+  } else {
+    g.fillStyle = '#f0ebe0'; g.fillRect(0, 0, w, h);
+    for (let i = 0; i < 120; i++) { g.fillStyle = `rgba(${R() < .5 ? '220,210,190' : '255,252,245'},.35)`; g.beginPath(); g.arc(R() * w, R() * h, 3 + R() * 14, 0, TAU); g.fill(); }
+    crack(40 + d * 200, `rgba(25,22,20,${.35 + c * .6})`, 1.2);
+    for (let i = 0; i < 4 + c * 10; i++) { const x = R() * w, y = h * (.75 + R() * .25), rr = 20 + R() * 40, gr = g.createRadialGradient(x, y, 0, x, y, rr); gr.addColorStop(0, 'rgba(40,36,32,.3)'); gr.addColorStop(1, 'rgba(40,36,32,0)'); g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2); }
+  }
+  return cv;
+}
+{ const pm = pieceMesh; pieceMesh = function (pc) { const m = pm(pc); if (pc.raku && pc.type === 'lathe' && m.geometry) { try { cylUV(m.geometry, false); const t = new THREE.CanvasTexture(rakuTex(pc.raku)); t.encoding = THREE.sRGBEncoding; m.material.map = t; m.material.color.set(0xffffff); const s = pc.raku.s; m.material.roughness = s === 'copper' ? .55 : s === 'naked' ? .7 : .2; m.material.clearcoat = s === 'copper' || s === 'naked' ? .2 : 1; if (s === 'copper') m.material.metalness = .35; m.material.needsUpdate = true; } catch (e) {} } return m; }; }
+const RAKU = (() => {
+  const SAY_IN = ['라쿠는 기다림 반, 용기 반이에요. 빨갛게 달아오른 그릇을 꺼내야 하거든요.', '1000도짜리 그릇을 집게로 꺼내요. 힐링게임 맞냐고요? …네, 아마도요.', '라쿠는 우연을 즐기는 소성이에요. 같은 건 두 번 안 나와요.', '불 앞에서는 머리 묶고, 소매 걷고. 게임이지만 기분이라도요.'];
+  let M = null;
+  function open() {
+    if (M && !M.closed) return; try { closeSheet && closeSheet(); } catch (e) {}
+    M = MINI.make('rakuM', '라쿠 소성'); M.bx.style.background = '#2b2420'; M.bx.style.color = '#f3ece2';
+    const p = M.panel('라쿠 소성', [[`자판기: “${esc(pick(SAY_IN))}”`, 'say q'], ['손으로 빚어 초벌한 다완이 있어요. 유약을 고르고, 빨갛게 녹으면 집게로 꺼내 톱밥 통에 넣어요. 뚜껑 덮고, 물에 식히고, 그을음을 닦으면 무늬가 나와요.']], []);
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:330px';
+    Object.entries(RAKU_S).forEach(([k, n]) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'go'; b.style.cssText = 'height:42px;padding:0 16px;font-size:15px'; b.textContent = n; b.onclick = () => { p.remove(); start(k); }; row.append(b); });
+    p.insertBefore(row, p.children[3] || null); bg();
+  }
+  function bg() { const { g, W, H } = M; const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#2a2330'); gr.addColorStop(.55, '#4a3a33'); gr.addColorStop(1, '#3a2e26'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#5b4a3c'; g.fillRect(0, H * .78, W, H * .22); g.fillStyle = 'rgba(0,0,0,.15)'; g.fillRect(0, H * .78, W, 3); }
+  const K = () => ({ kx: M.W * .27, cx: M.W * .76, gy: M.H * .78 });
+  function start(style) {
+    const G = M.G = { style, phase: 'heat', T: 20, t: 0, seed: Math.floor(Math.random() * 1e9), bowl: null, air: 0, flame: 0, coverAt: 0, cover: 0, smoke: [], spark: [], wipe: null, soot: null, quench: 0, lidOpen: 0, drag: null };
+    M.tip.textContent = '가마 온도가 오르고 있어요. 유약이 매끈하게 녹으면 꺼내요.';
+    M.buttons([['뚜껑 열고 꺼내기', takeOut, 'main']]);
+    const cv = M.cv; cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); G.drag = M.pos(e); if (G.phase === 'carry') G.carry = true; if (G.phase === 'scrub') scrub(G.drag, G.drag); };
+    cv.onpointermove = e => { if (!G.drag) return; const p = M.pos(e); if (G.phase === 'scrub') scrub(G.drag, p); G.drag = p; };
+    cv.onpointerup = cv.onpointercancel = () => { if (G.phase === 'carry' && G.carry) drop(); G.drag = null; G.carry = false; };
+    M.loop(dt => { step(dt); draw(); });
+  }
+  const glaze = T => T < 700 ? '가루처럼 말라 있어요' : T < 880 ? '부글부글 끓어요' : T < 960 ? '거의 녹았어요' : T <= 1060 ? '매끈하게 녹았어요!' : '흘러내리기 시작해요';
+  function takeOut() { const G = M.G; if (G.phase !== 'heat') return; G.melt = G.T; G.phase = 'carry'; G.lidOpen = 1; G.bowl = { x: K().kx, y: K().gy - 96, heat: 1 }; M.buttons([]); M.tip.textContent = '집게로 그릇을 끌어 오른쪽 톱밥 통에 넣어요. 오래 들고 있으면 금이 많이 가요.'; clank(); }
+  function drop() { const G = M.G, { cx, gy } = K(); if (Math.hypot(G.bowl.x - cx, G.bowl.y - (gy - 70)) < 70) { G.phase = 'flame'; G.bowl.x = cx; G.bowl.y = gy - 60; G.flame = 0; G.ft = 0; M.tip.textContent = '톱밥에 불이 붙었어요! 불길이 확 오르면 뚜껑을 덮어요.'; M.buttons([['뚜껑 덮기', cover, 'main']]); whoosh(); } }
+  function cover() { const G = M.G; if (G.phase !== 'flame') return; G.coverAt = G.ft; G.phase = 'smoke'; G.cover = 1; G.st = 0; M.buttons([]); M.tip.textContent = '연기가 새어 나와요. 탄소가 유약 금 사이로 스며드는 중…'; clank(); }
+  function quench() { const G = M.G; G.phase = 'quench'; G.q = 0; M.buttons([]); M.tip.textContent = '치이이익—'; hiss(); }
+  function toScrub() {
+    const G = M.G; G.phase = 'scrub'; M.tip.textContent = '그을음을 문질러 닦아요. 무늬가 드러나요.'; M.buttons([['다 닦았어요', finish, 'main']]);
+    const air = G.air, ct = G.coverAt; G.r = { s: G.style, seed: G.seed, d: clamp(air / 4, .1, 1), c: clamp(ct < .6 ? .3 : ct < 2.4 ? .9 : .9 - (ct - 2.4) * .25, .15, 1), l: clamp((1 - Math.max(0, air - 1.2) / 4) * (ct > .6 && ct < 2.6 ? 1 : .55) * (G.melt >= 960 && G.melt <= 1060 ? 1 : .6), .05, 1) };
+    G.pat = rakuTex(G.r, 512, 256); G.soot = document.createElement('canvas'); G.soot.width = 512; G.soot.height = 256; const sg = G.soot.getContext('2d'); sg.fillStyle = '#16120f'; sg.fillRect(0, 0, 512, 256); for (let i = 0; i < 300; i++) { sg.fillStyle = `rgba(${R8()},${R8()},${R8()},.2)`; sg.beginPath(); sg.arc(Math.random() * 512, Math.random() * 256, 4 + Math.random() * 20, 0, TAU); sg.fill(); }
+    G.wiped = 0;
+  }
+  const R8 = () => 20 + Math.floor(Math.random() * 30);
+  function bigRect() { const { W, H } = M, w = Math.min(W - 40, 360), h = w * .62; return { x: (W - w) / 2, y: H * .3, w, h }; }
+  function bowlPath(g, x, y, w, h) { g.beginPath(); g.moveTo(x - w / 2, y - h); g.bezierCurveTo(x - w * .52, y - h * .35, x - w * .32, y - h * .02, x - w * .18, y); g.lineTo(x + w * .18, y); g.bezierCurveTo(x + w * .32, y - h * .02, x + w * .52, y - h * .35, x + w / 2, y - h); g.quadraticCurveTo(x, y - h * 1.08, x - w / 2, y - h); g.closePath(); }
+  function scrub(a, b) { const G = M.G, r = bigRect(), sg = G.soot.getContext('2d'), sx = 512 / r.w, sy = 256 / r.h; sg.save(); sg.globalCompositeOperation = 'destination-out'; sg.lineCap = 'round'; sg.lineWidth = 34; sg.strokeStyle = 'rgba(0,0,0,.45)'; sg.beginPath(); sg.moveTo((a.x - r.x) * sx, (a.y - r.y) * sy); sg.lineTo((b.x - r.x) * sx + .1, (b.y - r.y) * sy); sg.stroke(); sg.restore(); G.wiped += Math.hypot(b.x - a.x, b.y - a.y) + 2; if (AU && AU.ctx && Math.random() < .3) noiseHit(AU.ctx.currentTime, 'bandpass', 2400, 1, .025 * MIX.amb, .005, .06, .04); }
+  function step(dt) {
+    const G = M.G; G.t += dt; const { kx, cx, gy } = K();
+    if (G.phase === 'heat') { G.T = Math.min(1150, G.T + dt * (G.T < 600 ? 160 : G.T < 900 ? 75 : 42)); if (Math.random() < dt * 4 && AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 180, .6, .05 * MIX.fire, .05, .3, .15); M.tip.textContent = `가마 ${Math.round(G.T)}℃ · 유약이 ${glaze(G.T)}`; }
+    if (G.phase === 'carry') { G.air += dt; G.bowl.heat = Math.max(.15, 1 - G.air / 6); if (G.carry && G.drag) { G.bowl.x += (G.drag.x - G.bowl.x) * Math.min(1, dt * 12); G.bowl.y += (G.drag.y - G.bowl.y) * Math.min(1, dt * 12); } if (Math.random() < dt * (1 + G.air * 2)) ping(); }
+    if (G.phase === 'flame') { G.ft += dt; G.flame = Math.min(1.2, G.ft * .9); if (G.ft > 4.5) cover(); }
+    if (G.phase === 'smoke') { G.st += dt; if (Math.random() < dt * 8) G.smoke.push({ x: cx + rand(-40, 40), y: gy - 120, vx: rand(-8, 8), vy: rand(-30, -16), r: rand(8, 16), a: .5 }); if (G.st > 4) { G.phase = 'lift'; G.lt = 0; M.tip.textContent = '뚜껑을 열었어요. 새까만 그릇을 물통으로!'; M.buttons([['물에 담그기', quench, 'main']]); clank(); } }
+    if (G.phase === 'quench') { G.q += dt; if (Math.random() < dt * 12) G.smoke.push({ x: M.W / 2 + rand(-60, 60), y: M.H * .55, vx: rand(-10, 10), vy: rand(-60, -30), r: rand(10, 22), a: .6, w: 1 }); if (Math.random() < dt * 5) ping(); if (G.q > 2.2) toScrub(); }
+    G.smoke = G.smoke.filter(s => { s.x += s.vx * dt; s.y += s.vy * dt; s.r += dt * 10; s.a -= dt * .18; return s.a > 0; });
+  }
+  function ping() { if (!AU || !AU.ctx) return; tone(AU.ctx.currentTime, rand(2600, 4200), .02 * MIX.amb, .001, .25, 'sine', .4); }
+  function clank() { if (!AU || !AU.ctx) return; const t = AU.ctx.currentTime; tone(t, 520, .04 * MIX.amb, .002, .3, 'triangle', .3); noiseHit(t, 'bandpass', 1200, 2, .05 * MIX.amb, .002, .1, .08); }
+  function whoosh() { if (!AU || !AU.ctx) return; noiseHit(AU.ctx.currentTime, 'lowpass', 600, .6, .14 * MIX.fire, .05, .9, .4); }
+  function hiss() { if (!AU || !AU.ctx) return; noiseHit(AU.ctx.currentTime, 'highpass', 3500, .5, .1 * MIX.amb, .02, 1.8, .6); }
+  function draw() {
+    const G = M.G, { g, W, H } = M, { kx, cx, gy } = K(); bg();
+    if (G.phase === 'scrub' || G.phase === 'done') { const r = bigRect(), x = r.x + r.w / 2, y = r.y + r.h; g.save(); bowlPath(g, x, y, r.w, r.h); g.clip(); g.drawImage(G.pat, r.x, r.y - r.h * .08, r.w, r.h * 1.1); if (G.phase === 'scrub') g.drawImage(G.soot, r.x, r.y - r.h * .08, r.w, r.h * 1.1); const sh = g.createLinearGradient(r.x, 0, r.x + r.w, 0); sh.addColorStop(0, 'rgba(0,0,0,.35)'); sh.addColorStop(.35, 'rgba(255,255,255,.12)'); sh.addColorStop(1, 'rgba(0,0,0,.4)'); g.fillStyle = sh; g.fillRect(r.x, r.y - r.h * .1, r.w, r.h * 1.2); g.restore(); g.fillStyle = '#1e1814'; g.beginPath(); g.ellipse(x, y - r.h, r.w / 2, r.h * .08, 0, 0, TAU); g.fill(); return; }
+    // 라쿠 가마 (드럼)
+    const T = G.T, glow = clamp((T - 500) / 600, 0, 1);
+    g.fillStyle = '#7d7268'; g.fillRect(kx - 64, gy - 150, 128, 150); g.fillStyle = 'rgba(0,0,0,.2)'; for (let i = 1; i < 4; i++) g.fillRect(kx - 64, gy - 150 + i * 38, 128, 2);
+    if (G.lidOpen) { g.fillStyle = `rgba(255,${120 + glow * 80},40,${.6 + glow * .3})`; g.beginPath(); g.ellipse(kx, gy - 150, 60, 12, 0, 0, TAU); g.fill(); g.fillStyle = '#6a6058'; g.beginPath(); g.ellipse(kx + 90, gy - 4, 64, 10, 0, 0, TAU); g.fill(); }
+    else { g.fillStyle = '#6a6058'; g.beginPath(); g.ellipse(kx, gy - 152, 66, 12, 0, 0, TAU); g.fill(); g.fillStyle = `rgba(255,${130 + glow * 90},50,${.3 + glow * .7})`; g.beginPath(); g.arc(kx, gy - 80, 11, 0, TAU); g.fill(); }
+    g.fillStyle = '#3a3a3a'; g.fillRect(kx - 92, gy - 30, 30, 10); // 버너
+    if (G.phase === 'heat') { for (let i = 0; i < 3; i++) { g.fillStyle = `rgba(80,140,255,${.4 + Math.random() * .3})`; g.beginPath(); g.ellipse(kx - 60, gy - 25, 8 + Math.random() * 6, 4, 0, 0, TAU); g.fill(); }
+      const bx0 = 24, bw = W - 48, by0 = 96; g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(bx0, by0, bw, 8); g.fillStyle = 'rgba(140,210,120,.55)'; g.fillRect(bx0 + bw * 960 / 1150, by0, bw * 100 / 1150, 8); g.fillStyle = `rgb(255,${Math.round(120 + glow * 100)},60)`; g.fillRect(bx0, by0, bw * T / 1150, 8); g.fillStyle = 'rgba(243,236,226,.75)'; g.font = '12px "Gowun Dodum", sans-serif'; g.textAlign = 'center'; g.fillText('딱 녹음', bx0 + bw * 1010 / 1150, by0 - 6);
+      // 들여다보기 창: 유약 상태
+      const px = W * .62, py = H * .42; g.fillStyle = '#1a1412'; g.beginPath(); g.arc(px, py, 70, 0, TAU); g.fill(); const tex = T < 880 ? 'rough' : T < 960 ? 'bub' : T <= 1060 ? 'glass' : 'run';
+      g.save(); g.beginPath(); g.arc(px, py, 66, 0, TAU); g.clip(); g.fillStyle = `rgb(255,${Math.round(110 + glow * 90)},${Math.round(40 + glow * 30)})`; g.fillRect(px - 70, py - 70, 140, 140);
+      if (tex === 'rough') for (let i = 0; i < 60; i++) { g.fillStyle = 'rgba(120,50,20,.35)'; g.fillRect(px - 66 + (i * 37 % 132), py - 66 + (i * 53 % 132), 4, 4); }
+      if (tex === 'bub') for (let i = 0; i < 18; i++) { g.strokeStyle = 'rgba(255,240,200,.7)'; g.beginPath(); g.arc(px - 50 + (i * 29 % 100), py - 50 + (i * 47 % 100), 3 + (i % 3) * 2 + Math.sin(G.t * 6 + i) * 1.5, 0, TAU); g.stroke(); }
+      if (tex === 'glass') { const sh = g.createLinearGradient(px - 60, py - 60, px + 60, py + 60); sh.addColorStop(0, 'rgba(255,255,240,.5)'); sh.addColorStop(.5, 'rgba(255,255,240,0)'); g.fillStyle = sh; g.fillRect(px - 70, py - 70, 140, 140); }
+      if (tex === 'run') for (let i = 0; i < 8; i++) { g.fillStyle = 'rgba(255,230,180,.5)'; g.fillRect(px - 60 + i * 16, py - 60, 5, 60 + (i % 3) * 30); }
+      g.restore(); g.strokeStyle = '#5a504a'; g.lineWidth = 6; g.beginPath(); g.arc(px, py, 70, 0, TAU); g.stroke(); g.fillStyle = 'rgba(243,236,226,.7)'; g.fillText('들여다보기 구멍', px, py + 92);
+    }
+    // 톱밥 통
+    g.fillStyle = '#8a8f93'; g.fillRect(cx - 52, gy - 110, 104, 110); g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(cx - 52, gy - 60, 104, 3); g.fillStyle = '#b08a5a'; g.beginPath(); g.ellipse(cx, gy - 110, 50, 10, 0, 0, TAU); g.fill();
+    if (G.phase === 'flame') { for (let i = 0; i < 9; i++) { const fh = (50 + 70 * Math.abs(Math.sin(G.t * 7 + i))) * G.flame, x = cx - 44 + i * 11; const fg = g.createLinearGradient(0, gy - 110, 0, gy - 110 - fh); fg.addColorStop(0, 'rgba(255,190,70,.95)'); fg.addColorStop(1, 'rgba(255,70,20,0)'); g.fillStyle = fg; g.beginPath(); g.ellipse(x, gy - 110 - fh / 2, 9, fh / 2, 0, 0, TAU); g.fill(); } }
+    if (G.cover && (G.phase === 'smoke')) { g.fillStyle = '#6f7478'; g.beginPath(); g.ellipse(cx, gy - 114, 58, 12, 0, 0, TAU); g.fill(); g.fillRect(cx - 8, gy - 132, 16, 10); }
+    if (G.phase === 'lift' || G.phase === 'quench') { const qx = W / 2, qy = H * .66; g.fillStyle = '#5c6b74'; g.fillRect(qx - 70, qy - 10, 140, 70); g.fillStyle = '#7fa3b3'; g.beginPath(); g.ellipse(qx, qy - 10, 70, 12, 0, 0, TAU); g.fill(); if (G.phase === 'quench') { g.fillStyle = '#16120f'; bowlPath(g, qx, qy - 6 + Math.min(20, G.q * 30), 70, 46); g.fill(); } else { g.fillStyle = '#16120f'; bowlPath(g, cx, gy - 116, 70, 46); g.fill(); } }
+    // 그릇
+    if (G.bowl && (G.phase === 'carry' || G.phase === 'flame')) { const b = G.bowl, hh = b.heat; g.save(); const gl = g.createRadialGradient(b.x, b.y - 20, 4, b.x, b.y - 20, 60); gl.addColorStop(0, `rgba(255,150,60,${.5 * hh})`); gl.addColorStop(1, 'rgba(255,150,60,0)'); g.fillStyle = gl; g.fillRect(b.x - 70, b.y - 90, 140, 140); g.fillStyle = `rgb(${Math.round(120 + 135 * hh)},${Math.round(60 + 90 * hh)},${Math.round(40 + 30 * hh)})`; bowlPath(g, b.x, b.y, 70, 46); g.fill(); g.restore();
+      if (G.phase === 'carry') { g.strokeStyle = '#2a2a2a'; g.lineWidth = 4; g.beginPath(); g.moveTo(b.x - 30, b.y - 40); g.lineTo(b.x + 50, b.y - 110); g.moveTo(b.x + 30, b.y - 40); g.lineTo(b.x + 60, b.y - 108); g.stroke(); g.strokeStyle = 'rgba(255,255,255,.35)'; g.setLineDash([6, 8]); g.beginPath(); g.ellipse(cx, gy - 70, 62, 52, 0, 0, TAU); g.stroke(); g.setLineDash([]); } }
+    G.smoke.forEach(s => { g.fillStyle = s.w ? `rgba(240,240,240,${s.a})` : `rgba(120,115,110,${s.a})`; g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.fill(); });
+  }
+  function finish() {
+    const G = M.G; if (G.phase !== 'scrub') return; G.phase = 'done'; const r = G.r;
+    const name = `${RAKU_S[r.s]} 라쿠 다완`;
+    const desc = r.s === 'copper' ? (r.l > .65 ? '무지갯빛이 번쩍여요' : r.l > .35 ? '구리빛 사이로 색이 군데군데' : '구리가 잠들었어요. 수수한 갈색') : r.s === 'black' ? (r.l > .5 ? '칠흑 속에 갈색 불꽃 자국' : '깊고 고요한 검정') : (r.d > .7 ? '잔금이 촘촘해요' : r.d > .35 ? '균열이 시원하게 퍼졌어요' : '금이 몇 줄만, 담백해요') + (r.c > .7 ? ', 탄소가 진하게 스몄어요' : r.c < .4 ? ', 금이 옅어요' : '');
+    const say = G.melt < 900 ? '유약이 덜 녹았을 때 꺼냈네요. 까끌까끌, 그것도 라쿠예요.' : G.melt > 1080 ? '유약이 조금 흘렀어요. 바닥 굽에 눈물 자국. 그것도 라쿠예요.' : G.coverAt < .6 ? '뚜껑을 너무 빨리 덮었어요. 불이 숨을 못 쉬었네요.' : G.coverAt > 3 ? '불이 다 타고 덮었어요. 탄소가 아쉬워요.' : pick(['같은 건 두 번 안 나와요. 이건 이 세상에 하나예요.', '불이 그린 그림이에요. 우리는 거들었을 뿐.', '라쿠는 결과보다 꺼내는 순간이 재밌죠. 손 안 데었죠?']);
+    M.buttons([]); M.tip.textContent = '';
+    const p = M.panel(name, [[`자판기: “${esc(say)}”`, 'say q'], [desc, 'st']], [['선반에 올리기', () => { const prof = ORDERS.tea.make().map(([x, y], i) => [x * (1 + (Math.sin(i * 1.7 + G.seed % 7) * .035)), y]); addToShelf({ type: 'lathe', prof, glaze: 'baek', k: 1, name, by: S.nick, date: new Date().toLocaleDateString('ko-KR'), raku: { s: r.s, seed: G.seed % 1e9, d: +r.d.toFixed(2), c: +r.c.toFixed(2), l: +r.l.toFixed(2) } }); SFX.thud(); M.close(); toast(`${name}, 선반에 올렸어요.`, '선반 보기', () => go('shelf')); }], ['한 번 더', () => { M.close(); open(); }, 'sub']]);
+    p.style.cssText = 'justify-content:flex-end;background:linear-gradient(rgba(43,36,32,0) 0%,rgba(43,36,32,0) 45%,rgba(43,36,32,.92) 58%)'; p.querySelectorAll('.say').forEach(e => e.style.color = '#efe6da'); p.querySelector('h2').style.color = '#f6efe4'; p.querySelector('.st').style.color = '#e8c98e'; p.querySelectorAll('.go').forEach((b, i) => { b.style.background = i ? 'rgba(243,236,226,.14)' : '#f3ece2'; b.style.color = i ? '#f3ece2' : '#2b2420'; });
+  }
+  return { open, get m() { return M; } };
+})();
+{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln') ui.acts.append(btn('라쿠 소성', () => RAKU.open())); }; }
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
