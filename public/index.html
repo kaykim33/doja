@@ -6437,6 +6437,49 @@ const CEN = (() => {
 
 { const et = enterThrow; enterThrow = function () { if (TH.centered === undefined && !isOpen() && Math.abs(TH.H - 1.05) < .02) CEN.start(); const r = et.apply(this, arguments); if (TH.centered === false) setTimeout(() => { showHint('반죽은 제가 해서 올려 뒀어요. 흙을 손가락으로 꾹 누르고 있으면 흔들림이 잦아들며 중심이 잡혀요.', 7); S.spin = Math.max(S.spin, .75); try { teacherSay(pick(['반죽은 해 놨어요. 중심은 직접 잡아 봐요.', '흙이 흔들리죠? 그게 아직 마음을 못 정한 거예요.']), 4); } catch (e) {} }, 400); return r; }; }
 
+/* ── 실로 떼기: 실 높이 고르기 ── */
+const WIRE = (() => {
+  const st = document.createElement('style'); st.textContent = '#wireHud{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:12;background:rgba(46,42,38,.85);color:#f6f1e8;border-radius:16px;padding:9px 16px;font-size:13.5px;display:none;white-space:nowrap;pointer-events:none}#wireHud.warn{background:rgba(160,60,40,.9)}'; document.head.append(st);
+  const hud = document.createElement('div'); hud.id = 'wireHud'; document.body.append(hud);
+  const g = new THREE.Group(); g.visible = false; scene.add(g);
+  const wm = new THREE.MeshBasicMaterial({ color: C('#3a2f28') }); const line = new THREE.Mesh(new THREE.CylinderGeometry(.0009, .0009, 1, 6), wm); line.rotation.z = Math.PI / 2; g.add(line);
+  const knobs = [-1, 1].map(s => { const k = new THREE.Mesh(new THREE.CylinderGeometry(.006, .006, .03, 10), std('#8a5a36', .7)); g.add(k); return k; });
+  const o = { on: false, hc: 0, ptr: null };
+  const res = (arr, H, hc, H2) => Array.from({ length: N }, (_, i) => { const u = ((i / (N - 1)) * H2 + hc) / H, f = clamp(u, 0, 1) * (N - 1), k = Math.min(N - 2, Math.floor(f)), t = f - k; return lerp(arr[k], arr[k + 1], t); });
+  o.cutSpec = (spec, hc) => { const H = spec.H, H2 = Math.max(.2, H - hc), fy = spec.opened ? spec.uf * H : H; return Object.assign({}, spec, { R: res(spec.R, H, hc, H2), Ri: res(spec.Ri, H, hc, H2), H: H2, uf: Math.max(0, (fy - hc) / H2), bottomless: !!spec.opened && hc >= fy - .02 }); };
+  o.profOf = sp => { const save = { R: TH.R.slice(), Ri: TH.Ri.slice(), H: TH.H, uf: TH.uf, fy: TH.fy }; for (let i = 0; i < N; i++) { TH.R[i] = sp.R[i]; TH.Ri[i] = sp.Ri[i]; } TH.H = sp.H; TH.uf = sp.uf; TH.fy = sp.uf * sp.H; let p; try { p = throwFinalProfile(); } finally { for (let i = 0; i < N; i++) { TH.R[i] = save.R[i]; TH.Ri[i] = save.Ri[i]; } TH.H = save.H; TH.uf = save.uf; TH.fy = save.fy; }
+    if (sp.bottomless) { const ri = +(Math.max(.03, sp.Ri[0]) * .98).toFixed(3); p = p.slice(0, p.length - 3); p[0] = [ri, 0]; p.push([ri, 0]); } return p; };
+  const floorH = () => isOpen() ? TH.uf * TH.H : TH.H;
+  function label() { const fy = floorH(), mm = Math.round((fy - o.hc) * POT_S * 1000);
+    if (!isOpen()) { hud.className = ''; hud.textContent = o.hc < .05 ? '물레판 바로 위 · 위아래로 끌어 높이를 정해요' : `바닥에서 ${Math.round(o.hc * POT_S * 1000)}mm 위 · 아래쪽은 남아요`; return; }
+    if (o.hc >= fy - .02) { hud.className = 'warn'; hud.textContent = '여기서 떼면 바닥이 뚫려요! 바닥 없는 그릇이 돼요'; }
+    else { hud.className = ''; hud.textContent = `남는 바닥 두께 약 ${Math.max(1, mm)}mm` + (mm < 4 ? ' · 아슬아슬해요' : ''); } }
+  o.enter = () => { if (TH.centered === false) return; o.on = true; o.hc = 0; g.visible = true; hud.style.display = 'block'; label(); S.spin = Math.min(S.spin, .25); updateRail(); showHint('실을 어디에 댈까요? 흙 쪽을 위아래로 끌어 높이를 정하고 「여기서 떼기」. 바닥보다 높게 대면 구멍이 뚫려요.', 7); };
+  o.exit = () => { o.on = false; g.visible = false; hud.style.display = 'none'; updateRail(); };
+  o.cut = () => {
+    const hc = o.hc; o.exit(); SFX.wire(); const spec = o.cutSpec(thSpec(), hc), p = o.profOf(spec);
+    const pc = { type: 'lathe', prof: p, by: S.nick }; if (spec.bottomless) pc.name = '바닥 없는 그릇';
+    const toKiln = () => { closeSheet(); S.pending = { stage: 'glaze', piece: pc }; S.mode = 'stamp'; updateRail(); glazeSheet(); };
+    if (spec.bottomless) { sheet('바닥이 뚫렸어요!', '실이 바닥보다 위를 지나갔어요. 바닥 없는 통이 됐어요. 화분 덮개나 등갓, 고리로 써도 예뻐요.', [btn('이대로 말려서 가마로', toKiln, 'chip on'), btn('다시 떼 볼래요', () => { closeSheet(); o.enter(); }), btn('조금 더 만질래요', closeSheet)]); try { teacherSay(pick(['어머, 바닥이 없네요. 일부러 그런 거죠? 그런 걸로 해요.', '바닥 없는 그릇은 하늘을 담는대요. …방금 지어낸 말이에요.']), 5); } catch (e) {} return; }
+    sheet('실로 떼어 냈어요', hc > .05 ? `바닥에서 ${Math.round(hc * POT_S * 1000)}mm 위를 뗐어요. 굽을 깎으면 그릇이 가벼워지고 바닥에 도장을 찍을 수 있어요.` : '어떻게 할까요? 굽을 깎으면 그릇이 가벼워지고 바닥에 도장을 찍을 수 있어요.', [
+      btn('굽 깎으러 가기', () => { closeSheet(); dryAndTrim(spec); }, 'chip on'), btn('그대로 말려서 가마로', toKiln), btn('조금 더 만질래요', closeSheet)]);
+  };
+  // 입력: 와이어 모드에선 위아래로 높이 조절
+  canvas.addEventListener('pointerdown', e => { if (o.on) o.ptr = e.pointerId; }, true);
+  addEventListener('pointerup', e => { if (o.ptr === e.pointerId) o.ptr = null; }, true);
+  let last = performance.now();
+  (function tk(now) { requestAnimationFrame(tk); last = now; if (!o.on) return; if (S.mode !== 'throw' || !myWheelObj) { o.exit(); return; }
+    if (S.down && PT.id !== null) { const p = potPlanePoint(PT.x, PT.y, myWheelObj.potRoot); if (p) { const nh = clamp(p.y, 0, TH.H * .95); if (Math.abs(nh - o.hc) > .002) { o.hc = nh; label(); } } }
+    const w = myWheelObj.potRoot.getWorldPosition(new THREE.Vector3()), dir = camera.getWorldDirection(new THREE.Vector3()); dir.y = 0; dir.normalize(); const right = new THREE.Vector3().crossVectors(dir, V3(0, 1, 0)).normalize();
+    let mx = 0; for (const r of TH.R) mx = Math.max(mx, r); const half = (mx + .5) * POT_S;
+    g.position.set(w.x, w.y + o.hc * POT_S + .001, w.z); g.rotation.set(0, Math.atan2(-right.z, right.x), 0); line.scale.y = half * 2; knobs[0].position.set(-half, 0, 0); knobs[1].position.set(half, 0, 0);
+    wm.color.copy(C(isOpen() && o.hc >= floorH() - .02 ? '#b23a28' : '#3a2f28')); })(last);
+  return o;
+})();
+cutOff = function () { WIRE.enter(); };
+{ const ti = throwInput; throwInput = function (p, dt, spin) { if (WIRE.on) { TH.contact = null; return 0; } return ti.apply(this, arguments); }; }
+{ const ur = updateRail; updateRail = function () { const r = ur.apply(this, arguments); if (WIRE.on && S.mode === 'throw' && ui.rail) { ui.rail.innerHTML = ''; ui.rail.append(btn('여기서 떼기', () => WIRE.cut(), 'chip on'), btn('바닥에 붙여 떼기', () => { WIRE.hc = 0; WIRE.cut(); }), btn('취소', () => WIRE.exit())); } return r; }; }
+
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
