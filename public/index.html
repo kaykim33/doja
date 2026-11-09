@@ -5051,11 +5051,37 @@ VM.M.pungryu = () => {
   const h = new THREE.Mesh(new THREE.TubeGeometry(arc, 40, .0045, 12, false), SILK); h.castShadow = true; g.add(h);
   return g;
 };
-const VEND_NEW = [{ id: 'pungryu', name: '풍류주전자', desc: '차와 술을 다정하게 품어내는 실크백자. 자판기 신작이에요.', shape: 'o:hang', k: 1.1, ears: false, nest: 1, gc: '#f4f5f3', gl: 'satin', photo: '14c3a7bbe1d89ea5f60d4517e28775ad', refuse: '', beg: '', agree: '', nw: true }];
+const VEND_NEW = [{ id: 'pungryu', name: '풍류주전자', desc: '차와 술을 다정하게 품어내는 실크백자. 자판기 신작이에요.', shape: 'o:hang', k: 1.1, ears: false, nest: 1, gc: '#f4f5f3', gl: 'satin', photo: '14c3a7bbe1d89ea5f60d4517e28775ad', refuse: '', beg: '', agree: '', nw: false }];
 setInterval(() => { VEND_NEW.forEach(n => { if (!VEND.items.some(x => x.id === n.id)) VEND.items.unshift(vendClean(n)); }); }, 1000);
 VEND_NEW.forEach(n => VEND.items.unshift(vendClean(n)));
 { const st = document.createElement('style'); st.textContent = '.newb{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff;background:#c8382c;border-radius:6px;padding:1px 5px;vertical-align:1px}'; document.head.appendChild(st); }
 // 작품장: 신상에 NEW 꼬리표
+// 시루호롱: 네모난 백자 오일 램프
+VM.M.siru = () => {
+  const g = new THREE.Group(), W = new THREE.MeshPhysicalMaterial({ color: C('#efeee9'), roughness: .2, clearcoat: 1, clearcoatRoughness: .15 });
+  const box = (w, h, d, r, y) => { const m = new THREE.Mesh(rbox(w, h, d, r), W); m.position.y = y; m.castShadow = m.receiveShadow = true; g.add(m); return m; };
+  box(.112, .007, .112, .0032, .0035);          // 받침
+  box(.098, .03, .098, .004, .021);              // 몸
+  box(.118, .011, .118, .0048, .0405);           // 뚜껑 판
+  const well = new THREE.Mesh(new THREE.CylinderGeometry(.021, .019, .003, 40), new THREE.MeshPhysicalMaterial({ color: C('#efeee8'), roughness: .1, clearcoat: 1 })); well.position.y = .0448; g.add(well);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(.021, .0012, 8, 48), W); rim.rotation.x = Math.PI / 2; rim.position.y = .0458; g.add(rim);
+  const tube = new THREE.Mesh(new THREE.CylinderGeometry(.0042, .0046, .019, 24), W); tube.position.y = .0545; tube.castShadow = true; g.add(tube);
+  const wick = new THREE.Mesh(new THREE.CylinderGeometry(.0017, .0017, .005, 10), new THREE.MeshStandardMaterial({ color: C('#d8cdb8'), roughness: .9 })); wick.position.y = .0655; g.add(wick);
+  const tipM = new THREE.Mesh(new THREE.SphereGeometry(.0015, 8, 6), new THREE.MeshBasicMaterial({ color: C('#3a2a20') })); tipM.position.y = .0682; g.add(tipM);
+  const fm = new THREE.MeshBasicMaterial({ color: C('#ffd27a'), transparent: true, opacity: .95, depthWrite: false });
+  const flame = new THREE.Mesh(new THREE.SphereGeometry(.0042, 14, 10), fm); flame.scale.set(.75, 2.1, .75); flame.position.y = .0728; g.add(flame);
+  const core = new THREE.Mesh(new THREE.SphereGeometry(.0022, 10, 8), new THREE.MeshBasicMaterial({ color: C('#fff6dc') })); core.scale.set(.8, 1.8, .8); core.position.y = .0705; g.add(core);
+  const glowT = canvasTex(64, 64, (c, w, h) => { const gr = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); gr.addColorStop(0, 'rgba(255,200,110,.75)'); gr.addColorStop(1, 'rgba(255,170,80,0)'); c.fillStyle = gr; c.fillRect(0, 0, w, h); });
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowT, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending })); glow.scale.setScalar(.032); glow.position.y = .0725; g.add(glow);
+  const lt = new THREE.PointLight(0xffc27a, .08, .18, 2); lt.position.y = .095; g.add(lt);
+  flame.onBeforeRender = () => { const t = performance.now() / 1000, f = 1 + Math.sin(t * 13) * .06 + Math.sin(t * 7.3) * .05; flame.scale.set(.75 * (2 - f), 2.1 * f, .75 * (2 - f)); flame.rotation.z = Math.sin(t * 3.1) * .08; lt.intensity = .07 + .015 * f; glow.material.opacity = .8 + .15 * Math.sin(t * 9); };
+  return g;
+};
+{ const isSiru = it => !!(it && /시루\s*호롱/.test(String(it.name || ''))); const vk = VM.key, vm = VM.make;
+  VM.key = it => vk(it) || (isSiru(it) ? 'siru' : null);
+  VM.make = it => { if (!vk(it) && isSiru(it)) { const g = VM.M.siru(); g.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } }); return g; } return vm(it); };
+  setInterval(() => { let ch = false; (VEND.items || []).forEach(it => { const want = isSiru(it) ? true : it.id === 'pungryu' ? false : it.nw; if (it.nw !== want) { it.nw = want; ch = true; } }); if (ch) try { renderCab(); } catch (e) {} }, 800);
+}
 const NEWTAG = (() => { const t = canvasTex(128, 56, (c, w, h) => { c.fillStyle = '#c8382c'; c.beginPath(); c.roundRect ? c.roundRect(4, 6, w - 8, h - 12, 14) : c.rect(4, 6, w - 8, h - 12); c.fill(); c.fillStyle = '#fff'; c.font = '700 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('NEW', w / 2, h / 2 + 1); }); return new THREE.SpriteMaterial({ map: t, depthTest: false }); })();
 const renderCab_n = renderCab;
 renderCab = function () { renderCab_n(); CAB.slots.forEach(s => { let it = null; s.traverse(o => { if (o.userData && o.userData.click && o.userData.click.it) it = o.userData.click.it; }); if (it && it.nw) { const sp = new THREE.Sprite(NEWTAG); sp.scale.set(.08, .035, 1); sp.position.set(0, .27, 0); s.add(sp); } }); };
