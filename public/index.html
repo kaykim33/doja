@@ -5080,7 +5080,7 @@ VM.M.siru = () => {
 { const isSiru = it => !!(it && /시루\s*호롱/.test(String(it.name || ''))); const vk = VM.key, vm = VM.make;
   VM.key = it => vk(it) || (isSiru(it) ? 'siru' : null);
   VM.make = it => { if (!vk(it) && isSiru(it)) { const g = VM.M.siru(); g.traverse(o => { if (o.isMesh && !o.material.transparent) { o.castShadow = true; o.receiveShadow = true; } }); return g; } return vm(it); };
-  setInterval(() => { let ch = false; (VEND.items || []).forEach(it => { const want = isSiru(it) ? true : it.id === 'pungryu' ? false : it.nw; if (it.nw !== want) { it.nw = want; ch = true; } }); if (ch) try { renderCab(); } catch (e) {} }, 800);
+  setInterval(() => { let ch = false; const L = VEND.items || []; L.forEach(it => { const want = isSiru(it) ? true : it.id === 'pungryu' ? false : it.nw; if (it.nw !== want) { it.nw = want; ch = true; } }); const i = L.findIndex(isSiru); if (i > 0) { L.unshift(L.splice(i, 1)[0]); ch = true; } if (ch) try { renderCab(); } catch (e) {} }, 800);
 }
 const NEWTAG = (() => { const t = canvasTex(128, 56, (c, w, h) => { c.fillStyle = '#c8382c'; c.beginPath(); c.roundRect ? c.roundRect(4, 6, w - 8, h - 12, 14) : c.rect(4, 6, w - 8, h - 12); c.fill(); c.fillStyle = '#fff'; c.font = '700 30px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('NEW', w / 2, h / 2 + 1); }); return new THREE.SpriteMaterial({ map: t, depthTest: false }); })();
 const renderCab_n = renderCab;
