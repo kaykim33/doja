@@ -6349,6 +6349,70 @@ const RAKU = (() => {
 })();
 { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln') ui.acts.append(btn(KILN_Q.length ? `라쿠로 굽기 (${KILN_Q.length})` : '라쿠로 굽기', () => RAKU.open())); }; }
 
+/* ── 중심 잡기: 자판기가 원뿔로 올려 둔 흙을 두 손으로 ── */
+const CEN = (() => {
+  const st = document.createElement('style'); st.textContent = '#cenHud{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 64px);transform:translateX(-50%);z-index:12;white-space:nowrap;background:rgba(46,42,38,.82);color:#f6f1e8;border-radius:16px;padding:8px 14px;font-size:13px;display:none;align-items:center;gap:10px;pointer-events:none}#cenHud .bar{width:110px;height:6px;border-radius:3px;background:rgba(255,255,255,.18);overflow:hidden}#cenHud .bar i{display:block;height:100%;background:#9fd08a;transition:width .2s}'; document.head.append(st);
+  const hud = document.createElement('div'); hud.id = 'cenHud'; hud.innerHTML = '<span>중심</span><span class="bar"><i></i></span><span class="lab"></span>'; document.body.append(hud);
+  const o = { w: 0, c: 0, noise: [], cyc: 0, up: false, tip: 0 };
+  const mound = u => 1.02 * Math.sqrt(Math.max(0, 1 - Math.pow(u, 2.6))) + .06, cone = u => .88 * Math.pow(1 - u, 1.05) + .09;
+  function shape() { const c = o.c; TH.H = lerp(1.05, 1.72, c); for (let i = 0; i < N; i++) { const u = uAt(i); TH.R[i] = Math.max(.05, lerp(mound(u), cone(u), c) * (1 + (o.noise[i] || 0) * (.3 + o.w))); TH.Ri[i] = 0; } TH.V = volNow(); TH.dirty = true; }
+  o.start = () => { o.w = .75; o.c = .9; o.cyc = 0; o.up = true; o.noise = Array.from({ length: N }, (_, i) => Math.sin(i * 1.7) * .03 + rand(-.03, .03)); TH.centered = false; shape(); };
+  o.finish = (bySkip) => { TH.centered = true; o.w = 0; o.c = 0; o.noise = []; shape(); TH.V = volNow(); hud.style.display = 'none'; hands.forEach(h => h.visible = false); if (TH.mesh) { TH.mesh.position.x = TH.mesh.position.z = 0; TH.mesh.rotation.z = 0; } try { updateRail(); } catch (e) {} SFX.splash(); showHint(bySkip ? '자판기가 쓱쓱 잡아 줬어요. 이제 가운데를 열어요.' : '중심이 잡혔어요! 손을 대도 흔들림이 없어요. 이제 가운데를 열어요.', 6); if (!bySkip) try { teacherSay(pick(['오, 손이 좋네요. 흙이 가만히 있죠?', '중심 잡히면 반은 한 거예요.', '그 느낌이에요. 흙이 손 안에서 조용해지는 거.']), 4); } catch (e) {} };
+  // 손 두 개
+  const hands = [handG.clone(), handG.clone()]; hands.forEach(h => { h.visible = false; scene.add(h); });
+  // 손가락 여러 개 추적
+  const ptr = new Map();
+  canvas.addEventListener('pointerdown', e => { ptr.set(e.pointerId, { x: e.clientX, y: e.clientY, py: null, px: null }); }, true);
+  addEventListener('pointermove', e => { const p = ptr.get(e.pointerId); if (p) { p.x = e.clientX; p.y = e.clientY; } }, true);
+  const up = e => ptr.delete(e.pointerId); addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  o.active = () => S.mode === 'throw' && TH.centered === false && myWheelObj && TH.mesh;
+  let last = performance.now();
+  (function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    if (!o.active()) { if (hud.style.display !== 'none') hud.style.display = 'none'; hands.forEach(h => h.visible = false); return; }
+    hud.style.display = 'flex'; handG.visible = false; thumbG.visible = false;
+    const spin = S.spin, wet = TH.wet; let sq = 0, upV = 0, downV = 0, jitter = 0, sides = new Set(), hi = 0;
+    hands.forEach(h => h.visible = false);
+    for (const [id, q] of ptr) {
+      const p = potPlanePoint(q.x, q.y, myWheelObj.potRoot); if (!p) continue;
+      const ax = Math.abs(p.x), y = p.y, R = Rat(clamp(y, 0, TH.H));
+      const vy = q.py == null ? 0 : (q.py - y) / Math.max(dt, .001) * -1, vx = q.px == null ? 0 : Math.abs(ax - q.px) / Math.max(dt, .001); q.py = y; q.px = ax;
+      const side = y > -.05 && y < TH.H * .92 && ax > R * .45 && ax < R + .45, top = !side && y > TH.H * .75 && y < TH.H + .5 && ax < R + .3;
+      if (side) { const s = clamp((R + .32 - ax) / .5, 0, 1); sq = Math.max(sq, s); sides.add(p.x < 0 ? -1 : 1); if (vy > 0) upV = Math.max(upV, vy * s); jitter = Math.max(jitter, vx);
+        const hh = hands[hi++]; if (hh) { const sx = p.x < 0 ? -1 : 1; hh.visible = true; hh.position.copy(p.o).addScaledVector(p.right, sx * (R + .05) * POT_S).add(V3(0, clamp(y, 0, TH.H) * POT_S, 0)); hh.lookAt(p.o.x, hh.position.y, p.o.z); } }
+      else if (top) { if (vy < 0) downV = Math.max(downV, -vy); const hh = hands[hi++]; if (hh) { hh.visible = true; hh.position.copy(p.o).add(V3(0, (TH.H + .05) * POT_S, 0)); hh.rotation.set(-Math.PI / 2, 0, 0); } }
+    }
+    // 한 손(마우스)이면 반대편에 손을 하나 더 그려 감싸는 느낌으로
+    if (hi === 1 && sides.size === 1 && hands[0].visible) { const p0 = hands[0].position, c0 = myWheelObj.potRoot.getWorldPosition(new THREE.Vector3()); hands[1].visible = true; hands[1].position.set(2 * c0.x - p0.x, p0.y, 2 * c0.z - p0.z); hands[1].lookAt(c0.x, p0.y, c0.z); }
+    const both = sides.size === 2 ? 1 : .6;
+    if (sq > 0 || downV > 0) {
+      if (spin < .3) { if (now > o.tip) { o.tip = now + 4000; showHint('물레를 빠르게 돌려야 중심이 잡혀요. 왼쪽 속도를 올려요.', 4); } }
+      else {
+        o.c = clamp(o.c + clamp(upV, 0, 2.5) * .32 * dt * both - clamp(downV, 0, 2.5) * .34 * dt, 0, 1);
+        const grip = wet > .3 ? 1 : .35; o.w = Math.max(0, o.w - dt * .09 * sq * both * spin * grip);
+        if (jitter > 4) o.w = Math.min(1, o.w + dt * .05);
+        if (wet < .3 && sq > .3) { o.w = Math.min(1, o.w + dt * .02); if (now > o.tip) { o.tip = now + 4000; showHint('손이 흙에 걸려요. 물을 묻혀요.', 4); } }
+        TH.wet = Math.max(.15, TH.wet - dt * .03 * (sq + downV * .2));
+        S.squelch = Math.max(S.squelch, (sq * .5 + Math.min(1, downV) * .4) * (.4 + spin));
+        if (o.c > .82 && !o.up) { o.up = true; }
+        if (o.c < .22 && o.up) { o.up = false; o.cyc++; o.w *= .62; SFX.thud(); showHint(o.w > .12 ? `${o.cyc}번 올렸다 내렸어요. 한 번 더!` : '거의 다 됐어요. 감싸 쥐고 가만히…', 3); }
+        shape();
+      }
+    }
+    if (o.w < .05 && o.c < .25) o.finish(false);
+    // 흔들림 표시
+    const r = myWheelObj.head.rotation.y, off = o.w * .028; TH.mesh.position.x = Math.cos(r * 1) * off; TH.mesh.position.z = -Math.sin(r * 1) * off; TH.mesh.rotation.z = Math.sin(r) * o.w * .08;
+    if (TH.dirty) buildThrowMesh();
+    hud.querySelector('i').style.width = Math.round((1 - o.w) * 100) + '%'; hud.querySelector('.lab').textContent = o.c > .6 ? '원뿔 · 위에서 눌러 내려요' : o.cyc ? '다시 감싸 올려요' : '양손으로 감싸 올려요';
+  })(last);
+  return o;
+})();
+{ const tr = throwReset; throwReset = function () { const r = tr.apply(this, arguments); try { CEN.start(); } catch (e) {} return r; }; }
+{ const ti = throwInput; throwInput = function (p, dt, spin) { if (TH.centered === false) { TH.contact = null; return 0; } return ti.apply(this, arguments); }; }
+{ const oc = openClay; openClay = function () { if (TH.centered === false) { showHint('먼저 중심을 잡아요. 양손으로 감싸 올렸다가, 위에서 눌러 내려요.', 5); return; } return oc.apply(this, arguments); }; }
+{ const ur = updateRail; updateRail = function () { const r = ur.apply(this, arguments); if (S.mode === 'throw' && TH.centered === false && ui.rail) { [...ui.rail.querySelectorAll('button')].forEach(b => { if (/가운데 열기|실로 떼기/.test(b.textContent)) b.remove(); }); ui.rail.append(btn('자판기에게 맡기기', () => CEN.finish(true))); } return r; }; }
+
+{ const et = enterThrow; enterThrow = function () { if (TH.centered === undefined && !isOpen() && Math.abs(TH.H - 1.05) < .02) CEN.start(); const r = et.apply(this, arguments); if (TH.centered === false) setTimeout(() => { showHint('반죽은 제가 해서 원뿔로 올려 뒀어요. 물레를 빠르게 돌리고, 양손으로 감싸 쥐어 위로 올렸다가, 위에서 눌러 내려요. 두세 번이면 중심이 잡혀요.', 9); try { teacherSay(pick(['반죽은 해 놨어요. 중심은 직접 잡아 봐요.', '흙이 흔들리죠? 그게 아직 마음을 못 정한 거예요.']), 4); } catch (e) {} }, 400); return r; }; }
+
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
