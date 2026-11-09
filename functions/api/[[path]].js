@@ -82,6 +82,18 @@ export async function onRequest(ctx) {
   const admin = await isAdmin(req, env);
 
   if (route === 'me') return J({ admin });
+  // 방문 기록: 손님도 서버에서 바로 더해요 (손님은 visits를 읽을 수 없으니까)
+  if (route === 'visit' && req.method === 'POST') {
+    const b = await req.json().catch(() => ({})), id = String(b.id || '');
+    if (!/^v_[a-z0-9]{6,40}$/.test(id)) return J({ error: 'bad_id' }, 400);
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || '')) ? String(b.day) : new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const cur = (await getDoc(env, 'visits/' + id)) || {}; const days = cur.days && typeof cur.days === 'object' ? cur.days : {};
+    if (b.add) days[day] = (Number(days[day]) || 0) + 1;
+    const keys = Object.keys(days).sort().slice(-60), trimmed = {}; keys.forEach(k => trimmed[k] = days[k]);
+    const nick = String(b.nick || cur.nick || '').slice(0, 12);
+    await putDoc(env, 'visits/' + id, { days: trimmed, nick, last: b.add ? Date.now() : (cur.last || Date.now()) });
+    return J({ ok: true });
+  }
   // 현관 도어락: 비번은 해시로만 저장, 누구도 읽을 수 없음
   if (route === 'door' && req.method === 'POST') {
     const b = await req.json().catch(() => ({})), code = String(b.code || '');
