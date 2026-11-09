@@ -6383,7 +6383,7 @@ const CEN = (() => {
   const mound = u => 1.02 * Math.sqrt(Math.max(0, 1 - Math.pow(u, 2.6))) + .06, cone = u => .88 * Math.pow(1 - u, 1.05) + .09;
   function shape() { const c = o.c; TH.H = lerp(1.05, 1.72, c); for (let i = 0; i < N; i++) { const u = uAt(i); TH.R[i] = Math.max(.05, lerp(mound(u), cone(u), c) * (1 + (o.noise[i] || 0) * (.3 + o.w))); TH.Ri[i] = 0; } TH.V = volNow(); TH.dirty = true; }
   o.start = () => { o.w = .75; o.c = .9; o.cyc = 0; o.up = true; o.noise = Array.from({ length: N }, (_, i) => Math.sin(i * 1.7) * .03 + rand(-.03, .03)); TH.centered = false; shape(); };
-  o.finish = (bySkip) => { TH.centered = true; o.w = 0; o.c = 0; o.noise = []; shape(); TH.V = volNow(); hud.style.display = 'none'; hands.forEach(h => h.visible = false); if (TH.mesh) { TH.mesh.position.x = TH.mesh.position.z = 0; TH.mesh.rotation.z = 0; } try { updateRail(); } catch (e) {} SFX.splash(); showHint(bySkip ? '자판기가 쓱쓱 잡아 줬어요. 이제 가운데를 열어요.' : '중심이 잡혔어요! 손을 대도 흔들림이 없어요. 이제 가운데를 열어요.', 6); if (!bySkip) try { teacherSay(pick(['오, 손이 좋네요. 흙이 가만히 있죠?', '중심 잡히면 반은 한 거예요.', '그 느낌이에요. 흙이 손 안에서 조용해지는 거.']), 4); } catch (e) {} };
+  o.finish = (bySkip) => { TH.centered = true; o.w = 0; o.c = 0; o.noise = []; shape(); TH.V = volNow(); hud.style.display = 'none'; hands.forEach(h => h.visible = false); if (TH.mesh) { TH.mesh.position.x = TH.mesh.position.z = 0; TH.mesh.rotation.z = 0; } try { updateRail(); } catch (e) {} SFX.splash(); showHint(bySkip ? '자판기가 쓱쓱 잡아 줬어요. 다음은 가운데 열기예요.' : '중심이 잡혔어요! 다음은 가운데 열기예요. 손을 한 번 떼고, 가운데를 위에서 꾹 누르거나 「가운데 열기」를 눌러요.', 6); PT.id = null; S.down = false; if (!bySkip) try { teacherSay(pick(['오, 손이 좋네요. 흙이 가만히 있죠?', '중심 잡히면 반은 한 거예요.', '그 느낌이에요. 흙이 손 안에서 조용해지는 거.']), 4); } catch (e) {} };
   // 손 두 개
   const hands = [handG.clone(), handG.clone()]; hands.forEach(h => { h.visible = false; scene.add(h); });
   // 손가락 여러 개 추적
@@ -6479,6 +6479,35 @@ const WIRE = (() => {
 cutOff = function () { WIRE.enter(); };
 { const ti = throwInput; throwInput = function (p, dt, spin) { if (WIRE.on) { TH.contact = null; return 0; } return ti.apply(this, arguments); }; }
 { const ur = updateRail; updateRail = function () { const r = ur.apply(this, arguments); if (WIRE.on && S.mode === 'throw' && ui.rail) { ui.rail.innerHTML = ''; ui.rail.append(btn('여기서 떼기', () => WIRE.cut(), 'chip on'), btn('바닥에 붙여 떼기', () => { WIRE.hc = 0; WIRE.cut(); }), btn('취소', () => WIRE.exit())); } return r; }; }
+
+/* ── 물레 단계 안내 ── */
+(() => {
+  const st = document.createElement('style'); st.textContent = '#thStep{position:fixed;left:50%;top:calc(env(safe-area-inset-top) + 62px);transform:translateX(-50%);z-index:12;background:rgba(46,42,38,.84);color:#f6f1e8;border-radius:16px;padding:8px 14px;font-size:13px;display:none;flex-direction:column;align-items:center;gap:4px;pointer-events:none;max-width:min(92vw,420px);text-align:center}#thStep .dots{display:flex;gap:8px;white-space:nowrap;font-size:12px;color:rgba(246,241,232,.55)}#thStep .dots b{color:#ffd88a;font-weight:700}#thStep .t{line-height:1.4}'; document.head.append(st);
+  const box = document.createElement('div'); box.id = 'thStep'; box.innerHTML = '<div class="dots"></div><div class="t"></div>'; document.body.append(box);
+  const NAMES = ['중심 잡기', '가운데 열기', '벽 올리기', '모양 잡기', '실로 떼기'];
+  let lastKey = '';
+  function cur() {
+    if (TH.centered === false) return null; // 중심 잡기 중엔 자체 안내
+    if (!isOpen()) return [1, '흙 가운데를 위에서 꾹 누르거나 「가운데 열기」를 눌러요.'];
+    let mx = 0; for (const r of TH.R) mx = Math.max(mx, r);
+    if (TH.H < 1.55) return [2, '벽 바깥을 누른 채 위로 쓸어 올려요. 벽이 얇아지며 높아져요.'];
+    if (!TH._shaped) return [3, '안쪽을 밀면 배가 불룩, 바깥을 누르면 잘록해져요. 마음에 들면 물레를 멈춰요(속도 맨 아래).'];
+    return [4, S.spin > .04 ? '물레를 멈추면(속도 맨 아래) 「실로 떼기」가 나와요.' : '「실로 떼기」를 눌러 높이를 골라 떼어요.'];
+  }
+  (function tk() { requestAnimationFrame(tk);
+    const show = S.mode === 'throw' && myWheelObj && !(typeof WIRE !== 'undefined' && WIRE.on);
+    const c = show ? cur() : null;
+    if (!c) { if (box.style.display !== 'none') box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    const key = c[0] + c[1]; if (key === lastKey) return; lastKey = key;
+    box.querySelector('.dots').innerHTML = `<span>${NAMES.map((n, i) => i < c[0] ? '●' : i === c[0] ? '◉' : '○').join(' ')}</span> <b>${c[0] + 1}/5 ${NAMES[c[0]]}</b>`;
+    box.querySelector('.t').textContent = c[1];
+    // 다음에 누를 버튼 강조
+    try { [...ui.rail.querySelectorAll('button')].forEach(b => { const on = (c[0] === 1 && /가운데 열기/.test(b.textContent)) || (c[0] >= 3 && /실로 떼기|멈추면 떼기/.test(b.textContent)); b.classList.toggle('on', on); }); } catch (e) {}
+  })();
+  // 모양 잡기: 벽을 다 올린 뒤 손을 한 번 더 대면 '모양 잡음'으로
+  let tH = 0; setInterval(() => { if (S.mode === 'throw' && isOpen() && TH.H >= 1.55 && (S.down || S.spin <= .04)) { tH += .2; if (tH > 2 || S.spin <= .04) TH._shaped = true; } if (!isOpen()) { TH._shaped = false; tH = 0; } }, 200);
+})();
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
