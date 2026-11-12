@@ -6511,7 +6511,7 @@ cutOff = function () { WIRE.enter(); };
 /* ── 가마 고사 (실제 가마 소성 기간 2026.11.13~15) ── */
 const GOSA = (() => {
   const q = (location.search.match(/[?&]day=([a-z-]+)/) || [])[1], kst = new Date(Date.now() + 9 * 3600e3), ymd = kst.getUTCFullYear() * 10000 + (kst.getUTCMonth() + 1) * 100 + kst.getUTCDate();
-  const on = q ? q === 'gosa' : ymd >= 20261113 && ymd <= 20261115;
+  const on = q ? q === "gosa" : ymd >= 20261112 && ymd <= 20261115;
   const o = { on, total: { bow: 0, won: 0, ppl: 0 }, mine: { bow: 0, won: 0 } };
   if (!on) return o;
   const P = { x: KILN.x + 1.3, z: KILN.z + 1.4 }; o.P = P;
