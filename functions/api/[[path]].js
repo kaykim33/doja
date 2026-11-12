@@ -30,13 +30,15 @@ const putDoc = (env, path, data) => { const i = path.lastIndexOf('/'); return en
 const merge = (a, b) => { const o = Object.assign({}, a); for (const [k, v] of Object.entries(b || {})) { if (v && typeof v === 'object' && !Array.isArray(v) && v.__delete__) delete o[k]; else if (v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) o[k] = merge(o[k], v); else o[k] = v; } return o; };
 
 // 누가 무엇을 쓸 수 있나
-function canRead(coll, admin) { const t = coll.split('/')[0]; return t === 'secret' ? false : t === 'visits' ? admin : true; }
+function canRead(coll, admin) { const t = coll.split('/')[0]; return t === 'secret' ? false : (t === 'visits' || t === 'gosaw2611') ? admin : true; }
 function canWrite(op, coll, id, admin, data) {
   const top = coll.split('/')[0];
   if (top === 'secret') return false;
   if (admin) return true;
   if (top === 'gallery' || top === 'tiles') return op === 'add' && JSON.stringify(data || {}).length <= LIMITS[top];
   if (top === 'visits') return (op === 'set' || op === 'update') && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(data || {}).length <= LIMITS.visits;
+  if (top === 'gosa2611' && coll === top) { const d = data || {}; return op === 'set' && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 200 && Number.isInteger(d.bow) && d.bow >= 0 && d.bow <= 9999 && Number.isInteger(d.won) && d.won >= 0 && d.won <= 100000000; }
+  if (top === 'gosaw2611' && coll === top) { const d = data || {}; return op === 'add' && JSON.stringify(d).length <= 300 && typeof d.wish === 'string' && d.wish.length <= 60; }
   if (/^(ice|shard)-\d{4}w\d{1,2}$/.test(top) && coll === top) { const d = data || {}; return op === 'set' && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 300 && Number.isInteger(d.h) && d.h >= 0 && d.h <= 500; }
   return false;
 }
