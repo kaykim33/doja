@@ -5036,7 +5036,7 @@ function pourTick(dt) {
   bloom(); let lastS = seasonNow(); setInterval(() => { const s = seasonNow(); if (s !== lastS) { lastS = s; bloom(); } }, 5000);
 }
 
-// ================= 찻자리 왼쪽(보는 쪽 기준): 다채다은님 면치기 잔 =================
+// ================= 찻자리 왼쪽(보는 쪽 기준): 면 깎은 연둣빛 잔 =================
 {
   const g = new THREE.Group(); g.position.set(.4, .386, .0); g.rotation.y = .3; teaG.add(g);
   const GL = new THREE.MeshPhysicalMaterial({ color: C('#d3e2d4'), roughness: .2, clearcoat: 1, clearcoatRoughness: .12 });
@@ -5053,7 +5053,7 @@ function pourTick(dt) {
   }
   geo.computeVertexNormals(); mesh(geo, GL, 0, 0, 0, g);
 }
-TEA_LINES.push('연둣빛 면 깎은 잔은 다채다은님 작품이에요. 아래쪽을 칼로 깎아 면을 냈어요.', '다채다은님 잔에 차 한 잔 따라 드리고 싶은데, 손이 없네요.', '면 깎은 잔은 손에 쥐면 손가락이 알아서 자리를 찾아요.');
+TEA_LINES.push('면이 이렇게 많으니, 참 다채로운 잔이군요.', '연둣빛 잔이 오늘따라 다채로워 보여요. 빛 따라 면마다 색이 달라요.', '면 깎은 잔은 손에 쥐면 손가락이 알아서 자리를 찾아요.');
 
 // ================= 자판기 신작: 풍류주전자 =================
 VM.M.pungryu = () => {
