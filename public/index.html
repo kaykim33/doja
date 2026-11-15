@@ -3080,6 +3080,7 @@ function galParse(snap) {
     if (d.birdName) pc.birdName = String(d.birdName).slice(0, 12);
     if (d.raku && typeof d.raku === 'object' && RAKU_S[d.raku.s]) { pc.raku = { s: d.raku.s, seed: Math.floor(gnum(d.raku.seed, 0, 1e9, 1)), d: gnum(d.raku.d, 0, 1, .5), c: gnum(d.raku.c, 0, 1, .5), l: gnum(d.raku.l, 0, 1, .5) }; if (Array.isArray(d.raku.m)) pc.raku.m = d.raku.m.slice(0, 24).map(l => Array.isArray(l) ? l.slice(0, 40).filter(q => Array.isArray(q) && isFinite(+q[0]) && isFinite(+q[1])).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1)]) : []).filter(l => l.length > 1); if (Array.isArray(d.raku.f)) pc.raku.f = d.raku.f.slice(0, 12).filter(q => Array.isArray(q) && q.length >= 4 && q.every(v => isFinite(+v))).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1), clamp(+q[2], -4, 4), clamp(+q[3], 0, 1)]); }
     if (/^#[0-9a-f]{6}$/i.test(d.bird || '')) pc.bird = d.bird;
+    if (['bamboo', 'wave', 'stone', 'cloud', 'persim'].includes(d.mun)) pc.mun = d.mun; if (d.fine === true) pc.fine = true;
     if (d.yo && typeof d.yo === 'object' && ['top', 'front', 'back', 'low'].includes(d.yo.spot)) pc.yo = { seed: Math.floor(gnum(d.yo.seed, 0, 1e9, 1)), spot: d.yo.spot, ash: gnum(d.yo.ash, 0, 1, 0), flash: gnum(d.yo.flash, 0, 1, 0) };
     if (d.trace && typeof d.trace === 'object') { const tr = {}; ['body', 'belly', 'wing', 'ink', 'spot'].forEach(k => { if (/^#[0-9a-f]{6}$/i.test(d.trace[k] || '')) tr[k] = d.trace[k]; }); if (tr.body && tr.belly && tr.ink) { tr.n = String(d.trace.n || '').slice(0, 12); tr.wing = tr.wing || tr.body; if (['petal', 'maple', 'ginkgo'].includes(d.trace.motif)) tr.motif = d.trace.motif; pc.trace = tr; } }
     if (typeof d.stampImg === 'string' && d.stampImg.length < 120000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.stampImg)) pc.stampImg = d.stampImg;
@@ -6696,6 +6697,178 @@ if (KOPEN.on) {
   { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln' || S.station === 'board') ui.acts.append(btn(KOPEN.opened() ? '이번 가마 보기' : '가마 여는 날 안내', () => KOPEN.opened() ? KOPEN.ceremony() : KOPEN.announce())); }; }
   { const oa = openAdmin; openAdmin = function () { const r = oa.apply(this, arguments); try { if (!BOARD.admin) return r; const box = document.querySelector('#admin .box') || (typeof ad !== 'undefined' && ad.querySelector('.box')); if (!box) return r; const sec = el('div', 'sec'); sec.append(el('h3', null, '가마 여는 날')); const p = el('p'); p.style.cssText = 'font-size:12.5px;color:var(--ink-2);margin:2px 0 8px'; p.textContent = KOPEN.opened() ? '가마가 열렸어요.' : '예정: 11/16 저녁 8시. 지금 바로 열 수도 있어요.'; sec.append(p); if (!KOPEN.opened()) sec.append(btn('지금 가마 열기', async () => { try { await KOPEN.db.doc('kilnopen/2611').set({ at: Date.now() }); KOPEN.adminOpen = Date.now(); toast('가마를 열었어요!'); } catch (e) { toast('열지 못했어요.'); } }, 'chip on')); box.insertBefore(sec, box.children[2] || null); } catch (e) {} return r; }; }
 }
+
+
+/* ================= 도야도에서 온 것들: 대나무숲 · 수비장 · 자연 문양 · 말림 선반 · 수호상 · 마당 ================= */
+const DOYA = { };
+async function doyaApi() { try { const [db, u] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); return { db, id: await u.id() }; } catch (e) { return {}; } }
+function doyaTap(act, fn) { const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click; if (c && c.act === act) { fn(c); return; } return tf.apply(this, arguments); }; }
+function doyaZone(z) { const zf = zones; zones = function () { const Z = zf(); try { const r = typeof z === 'function' ? z() : z; (Array.isArray(r) ? r : [r]).forEach(q => q && Z.push(q)); } catch (e) {} return Z; }; }
+function doyaHit(w, h, d, x, y, z, click, parent = scene) { const m = mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshBasicMaterial({ visible: false }), x, y, z, parent, false); m.userData.click = click; clickables.push(m); return m; }
+const raining = () => kmaFresh() && KMA.pty && KMA.pty !== 'none' || (typeof WTH !== 'undefined' && WTH.rain > .3);
+
+/* ── 1. 대나무숲 ── */
+const BAMBOO = (() => {
+  const g = new THREE.Group(); scene.add(g); const cx = -7.4, cz = -10.2; DOYA.bamboo = { x: cx, z: cz };
+  const stalkM = std('#7d9a52', .55), nodeM = std('#5f7a3c', .6), leafM = new THREE.MeshStandardMaterial({ color: C('#6f9a4a'), roughness: .7, side: THREE.DoubleSide });
+  const leafG = new THREE.PlaneGeometry(.06, .22); leafG.translate(0, .11, 0);
+  const st = [];
+  for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = .25 + Math.sqrt(i / 46) * 1.9, x = cx + Math.cos(a) * r * 1.1, z = cz + Math.sin(a) * r * 1.4, h = 3.2 + Math.random() * 2.2, rad = .03 + Math.random() * .02;
+    const s = new THREE.Group(); s.position.set(x, 0, z); g.add(s); const seg = 7; for (let k = 0; k < seg; k++) { const m = mesh(new THREE.CylinderGeometry(rad * .96, rad, h / seg - .01, 8), stalkM, 0, h / seg * (k + .5), 0, s); m.castShadow = k < 2; mesh(new THREE.CylinderGeometry(rad * 1.12, rad * 1.12, .018, 8), nodeM, 0, h / seg * (k + 1), 0, s, false); }
+    for (let k = 0; k < 9; k++) { const lf = new THREE.Mesh(leafG, leafM); lf.position.set(0, h * (.55 + k * .05), 0); lf.rotation.set(-.9 - Math.random() * .5, Math.random() * TAU, 0); s.add(lf); }
+    st.push({ s, ph: Math.random() * TAU, k: .015 + Math.random() * .02 }); }
+  doyaHit(4.6, 3, 5.4, cx, 1.5, cz, { act: 'doya', id: 'bamboo' });
+  let last = performance.now(), knock = 0;
+  (function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now; const t = now / 1000, w = (typeof WINDF !== 'undefined' ? WINDF : 1);
+    st.forEach(b => { b.s.rotation.z = Math.sin(t * .9 + b.ph) * b.k * w; b.s.rotation.x = Math.cos(t * .7 + b.ph) * b.k * .7 * w; });
+    if (AU && AU.ctx && S.mode === 'walk' && Math.hypot(WALK.x - cx, WALK.z - cz) < 4.5) { knock -= dt; if (knock < 0) { knock = 1.5 + Math.random() * 4 / w; const tt = AU.ctx.currentTime; tone(tt, rand(380, 620), .025 * MIX.wind, .002, .12, 'triangle', .3); tone(tt + .07, rand(300, 500), .015 * MIX.wind, .002, .1, 'triangle', .3); noiseHit(tt, 'highpass', 5000, .5, .03 * MIX.wind * w, .3, .8, .3); } } })(last);
+  return { cx, cz };
+})();
+
+/* ── 2. 자연 문양 ── */
+const MUN = { bamboo: '대나무 잎', wave: '물결', stone: '돌', cloud: '구름', persim: '감잎' };
+const MUN_SRC = { bamboo: '대나무숲', wave: '분수', stone: '수비장 옆 돌', cloud: '창가 하늘', persim: '정원 감나무' };
+function munGot() { return store.get('mun', []); }
+function munDraw(g, k, w, h, col = '#2c4f9a') {
+  g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineCap = 'round'; g.lineJoin = 'round';
+  if (k === 'bamboo') { for (let i = 0; i < 4; i++) { const x = w * (.12 + i * .25), y = h * .55; g.lineWidth = 2; g.beginPath(); g.moveTo(x, h * .95); g.lineTo(x + 4, h * .18); g.stroke(); for (let j = 0; j < 3; j++) { g.beginPath(); const a = -.8 + j * .6 + i * .3, L = h * .28; g.ellipse(x + Math.cos(a) * L * .5, y - j * 14 + Math.sin(a) * L * .25, L * .5, 4, a, 0, TAU); g.fill(); } } }
+  else if (k === 'wave') { g.lineWidth = 2.2; for (let r = 0; r < 4; r++) { g.beginPath(); for (let x = 0; x <= w; x += 4) { const y = h * (.25 + r * .18) + Math.sin(x / w * TAU * 4 + r) * 6; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); } }
+  else if (k === 'stone') { g.lineWidth = 2; [[.15, .55, 18], [.38, .7, 12], [.6, .5, 22], [.85, .68, 14]].forEach(([u, v, r]) => { g.beginPath(); for (let a = 0; a <= TAU + .01; a += .5) { const rr = r * (.8 + .25 * Math.sin(a * 3 + u * 9)); a ? g.lineTo(u * w + Math.cos(a) * rr * 1.3, v * h + Math.sin(a) * rr) : g.moveTo(u * w + rr * 1.3, v * h); } g.stroke(); g.globalAlpha = .25; g.fill(); g.globalAlpha = 1; }); }
+  else if (k === 'cloud') { g.lineWidth = 2; [[.2, .35], [.55, .55], [.85, .3]].forEach(([u, v]) => { const x = u * w, y = v * h; g.beginPath(); g.arc(x, y, 9, Math.PI, 0); g.arc(x + 14, y - 4, 11, Math.PI, 0); g.arc(x + 30, y, 8, Math.PI, 0); g.lineTo(x - 9, y); g.stroke(); g.beginPath(); g.moveTo(x - 14, y + 8); g.quadraticCurveTo(x + 10, y + 14, x + 40, y + 6); g.stroke(); }); }
+  else if (k === 'persim') { [[.25, .5], [.7, .45]].forEach(([u, v]) => { const x = u * w, y = v * h; g.beginPath(); g.ellipse(x, y, 22, 11, -.5, 0, TAU); g.globalAlpha = .85; g.fill(); g.globalAlpha = 1; g.strokeStyle = '#f4f2ec'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x - 18, y + 9); g.lineTo(x + 18, y - 9); g.stroke(); g.strokeStyle = col; }); g.beginPath(); g.arc(w * .48, h * .7, 9, 0, TAU); g.globalAlpha = .6; g.fill(); g.globalAlpha = 1; }
+  g.restore();
+}
+function munPreview(k, s = 120) { const c = document.createElement('canvas'); c.width = s * 2; c.height = s; const g = c.getContext('2d'); g.fillStyle = '#f4f2ec'; g.fillRect(0, 0, c.width, c.height); munDraw(g, k, c.width, c.height); return c.toDataURL(); }
+function observe(k) {
+  closeSheet(); const got = munGot().includes(k);
+  const z = zoomBox(); const t = el('div', 'zt'); t.textContent = `${MUN_SRC[k]}을(를) 가만히 바라봐요…`; const bar = el('div'); bar.style.cssText = 'width:min(260px,70vw);height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden'; const i = el('i'); i.style.cssText = 'display:block;height:100%;width:0;background:#f4efe6;transition:width 3s linear'; bar.append(i); z.append(t, bar); requestAnimationFrame(() => i.style.width = '100%');
+  if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 600, .5, .03 * MIX.amb, .5, 2.5, .5);
+  setTimeout(() => { bar.remove(); if (!got) { store.set('mun', munGot().concat(k)); } t.textContent = got ? `${MUN[k]} 문양, 다시 봐도 좋네요.` : `「${MUN[k]}」 문양을 얻었어요!`; const im = el('img', 'zimg'); im.src = munPreview(k, 200); im.alt = MUN[k] + ' 문양'; im.style.aspectRatio = '2/1'; const cap = el('div', 'zcap'); cap.textContent = `가마에 넣을 때 유약 고르는 화면에서 청화 문양으로 그릴 수 있어요. (${munGot().length}/5)`; z.append(im, cap); if (!got) { SFX.ding(); try { teacherSay(pick(['보는 게 반이에요. 그리는 건 나머지 반.', '문양은 밖에 다 있어요. 보기만 하면 돼요.']), 4); } catch (e) {} } }, 3100);
+}
+doyaTap('doya', c => { if (c.id === 'bamboo') { if (S.mode === 'walk' && Math.hypot(WALK.x - BAMBOO.cx, WALK.z - BAMBOO.cz) > 4.5) { WALK.goal = { x: BAMBOO.cx + 2.6, z: BAMBOO.cz + .4, run: () => observe('bamboo') }; markGoal(BAMBOO.cx + 2.6, BAMBOO.cz + .4); return; } observe('bamboo'); } else if (c.id === 'persim') observe('persim'); else if (c.id === 'stone') observe('stone'); });
+doyaHit(1.6, 3, 1.6, GARDEN.tree.x, 1.8, GARDEN.tree.z, { act: 'doya', id: 'persim' });
+{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'fountain') ui.acts.append(btn('물결 바라보기 (문양)', () => observe('wave'))); if (S.station === 'wind') ui.acts.append(btn('구름 바라보기 (문양)', () => observe('cloud'))); }; }
+doyaZone(() => [{ id: 'bamboo', x: BAMBOO.cx + 2.6, z: BAMBOO.cz + .4, r: .8, text: '대나무숲 바라보기', run: () => observe('bamboo') }, { id: 'persim', x: GARDEN.tree.x + .9, z: GARDEN.tree.z + .6, r: .6, text: '감나무 잎 바라보기', run: () => observe('persim') }]);
+// 유약 화면에 청화 문양 고르기
+{ const gs = glazeSheet; glazeSheet = function () { const r = gs.apply(this, arguments); try { const pc = S.pending && S.pending.piece; if (!pc || pc.type === 'mini') return r; const L = munGot(); const box = document.querySelector('#sheet .opts, .sheet .opts') || document.querySelector('#sheet') ; const row = el('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center;width:100%;flex-basis:100%'; const lab = el('span'); lab.style.cssText = 'font-size:12.5px;color:var(--ink-2);width:100%'; lab.textContent = L.length ? '청화 문양' : '청화 문양 · 대나무숲, 분수, 창가, 감나무, 돌을 바라보면 생겨요'; row.append(lab);
+  const mk = (k, n) => { const b = btn(n, () => { pc.mun = k || undefined; [...row.querySelectorAll('button')].forEach(x => x.classList.toggle('on', x === b)); }); if ((pc.mun || '') === (k || '')) b.classList.add('on'); row.append(b); }; mk('', '없음'); L.forEach(k => mk(k, MUN[k]));
+  const anchor = [...document.querySelectorAll('input[aria-label="작품 이름"]')].pop(); if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(row, anchor); } catch (e) {} return r; }; }
+// 3D: 요변과 문양을 한 장에
+{ const pm = pieceMesh; pieceMesh = function (pc) { if (!pc.mun || pc.raku) return pm(pc); const yo = pc.yo; const p2 = Object.assign({}, pc); delete p2.yo; const m = pm(p2); try { if (pc.type === 'lathe' && m.geometry) cylUV(m.geometry, false); const c = yo ? yoTex(yo, 512, 256) : (() => { const c = document.createElement('canvas'); c.width = 512; c.height = 256; const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, 512, 256); return c; })(); const g = c.getContext('2d'); g.save(); g.translate(0, 256 * .22); munDraw(g, pc.mun, 512, 256 * .56); g.restore(); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; const seen = new Set(); m.traverse(o => { if (!o.isMesh || !o.material || seen.has(o.material) || o.material.transparent) return; seen.add(o.material); o.material.map = t; o.material.needsUpdate = true; }); } catch (e) {} return m; }; }
+
+/* ── 3. 수비장 · 물레방아 ── */
+const SUBI = (() => {
+  const P = { x: 2.9, z: -10.9 }, g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.rotation.y = Math.PI / 2; g.scale.setScalar(.85); scene.add(g); DOYA.subi = P;
+  const wood = std('#7a5536', .8), woodD = std('#5a3d26', .85), stone = std('#9a948c', .9), water = new THREE.MeshStandardMaterial({ color: C('#7fa6b3'), roughness: .15, transparent: true, opacity: .85 });
+  // 물레방아
+  const wh = new THREE.Group(); wh.position.set(.9, .75, 0); g.add(wh); const R = .68;
+  for (let i = 0; i < 12; i++) { const a = i / 12 * TAU; const p = mesh(new THREE.BoxGeometry(.04, .2, .3), wood, Math.cos(a) * R, Math.sin(a) * R, 0, wh); p.rotation.z = a; }
+  [-.15, .15].forEach(z => { const ring = mesh(new THREE.TorusGeometry(R - .05, .02, 6, 32), woodD, 0, 0, z, wh); }); for (let i = 0; i < 6; i++) { const sp = mesh(new THREE.BoxGeometry(.03, R * 2, .03), woodD, 0, 0, 0, wh); sp.rotation.z = i / 6 * Math.PI; } mesh(new THREE.CylinderGeometry(.06, .06, .5, 10), woodD, 0, 0, 0, wh).rotation.x = Math.PI / 2;
+  [-.3, .3].forEach(z => mesh(new THREE.BoxGeometry(.08, .9, .08), woodD, .9, .45, z, g));
+  const flume = mesh(new THREE.BoxGeometry(1.2, .06, .22), wood, .2, 1.55, 0, g); flume.rotation.z = -.12;
+  const fall = mesh(new THREE.BoxGeometry(.18, .5, .02), new THREE.MeshBasicMaterial({ color: C('#bfe2ee'), transparent: true, opacity: .6 }), .78, 1.25, 0, g, false);
+  // 방아 공이 + 절구
+  const pestle = new THREE.Group(); pestle.position.set(-.1, .55, 0); g.add(pestle); mesh(new THREE.BoxGeometry(1.0, .07, .07), woodD, -.3, 0, 0, pestle); mesh(new THREE.CylinderGeometry(.05, .05, .35, 10), woodD, -.75, -.17, 0, pestle);
+  mesh(new THREE.CylinderGeometry(.16, .13, .25, 16), stone, -.85, .125, 0, g);
+  // 수비 통 두 개
+  const tanks = []; [[-.4, .75], [.25, .85]].forEach(([x, z]) => { const t = new THREE.Group(); t.position.set(x, 0, z); g.add(t); mesh(new THREE.CylinderGeometry(.3, .28, .42, 22, 1, true), std('#8a6a4a', .8, { side: THREE.DoubleSide }), 0, .21, 0, t); const w = mesh(new THREE.CylinderGeometry(.285, .285, .01, 22), water.clone(), 0, .36, 0, t, false); const mud = mesh(new THREE.CylinderGeometry(.27, .27, .01, 22), std('#c8b8a0', .9), 0, .02, 0, t, false); tanks.push({ w, mud }); });
+  // 관찰용 돌
+  const rocks = new THREE.Group(); rocks.position.set(-.9, 0, -.8); g.add(rocks); [[0, 0, .22], [.3, .15, .14], [-.2, .25, .1]].forEach(([x, z, r]) => { const m = mesh(new THREE.DodecahedronGeometry(r, 1), std('#8f8a84', .95), x, r * .6, z, rocks); m.scale.y = .6; });
+  doyaHit(2.4, 2, 2, .3, 1, 0, { act: 'subi' }, g); doyaHit(.9, .6, .8, -.9, .3, -.8, { act: 'doya', id: 'stone' }, g);
+  const o = { P, open: false, stir: 0, clear: 1, run: 0 };
+  let last = performance.now(), thud = 0;
+  (function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now; const sp = o.open ? 1.6 : 0; o.run += (sp - o.run) * Math.min(1, dt); wh.rotation.z -= o.run * dt; fall.visible = o.run > .1;
+    const ph = (now / 1000 * o.run * .9) % 1; pestle.rotation.z = o.run > .1 ? Math.max(0, Math.sin(ph * TAU)) * .25 : 0; if (o.run > .5) { thud -= dt; if (thud < 0) { thud = 1 / (o.run * .9); if (AU && AU.ctx && S.mode === 'walk' && Math.hypot(WALK.x - P.x, WALK.z - P.z) < 6) noiseHit(AU.ctx.currentTime, 'lowpass', 160, .7, .08 * MIX.amb, .003, .15, .1); } }
+    if (o.settle) { o.clear = Math.min(1, o.clear + dt / 18); tanks[1].w.material.color.copy(C('#9a7c5e')).lerp(C('#7fa6b3'), o.clear); tanks[1].mud.position.y = .02 + o.clear * .06; if (o.clear >= 1) { o.settle = false; o.done && o.done(); } } })(last);
+  o.play = () => {
+    if (o.busy) return; o.busy = true; const fine = store.get('fineClay', 0);
+    sheet('수비장', `물길을 열어 물레방아를 돌리면 방아가 원료를 빻아요. 빻은 흙을 물에 풀어 가라앉히면 고운 흙만 남아요. (고운 흙 ${fine}덩이)`, [], [btn('물길 열기', () => { closeSheet(); o.open = true; showHint('쿵— 쿵— 방아가 원료를 빻아요.', 5); if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 900, .5, .08 * MIX.water, .3, 3, 1); setTimeout(() => { o.open = false; sheet('흙물 풀기', '빻은 가루를 물통에 풀었어요. 흙탕물이 가라앉을 때까지 가만히 봐요.', [], [btn('가라앉히기', () => { closeSheet(); o.clear = 0; o.settle = true; S.zoomTo && S.zoomTo(o.P); showHint('흙탕물이 천천히 맑아져요. 물멍…', 8); o.done = () => { o.busy = false; store.set('fineClay', store.get('fineClay', 0) + 1); SFX.ding(); toast(`고운 흙 한 덩이를 얻었어요! 물레에서 빚으면 표면이 더 매끈해요. (${store.get('fineClay', 0)}덩이)`, null, null, 6); try { teacherSay('징더전에서도 이렇게 흙을 걸렀대요. 물이 다 해 줘요.', 5); } catch (e) {} }; }, 'chip on')]); }, 6000); }, 'chip on'), btn('닫기', () => { o.busy = false; closeSheet(); })]);
+  };
+  return o;
+})();
+doyaTap('subi', () => SUBI.play());
+doyaZone(() => ({ id: 'subi', x: SUBI.P.x + .3, z: SUBI.P.z + 1.4, r: .7, text: '수비장 (물레방아)', run: () => SUBI.play() }));
+// 고운 흙: 다음 물레 작품에 쓰기
+{ const tr = throwReset; throwReset = function () { const r = tr.apply(this, arguments); TH.fine = false; if (store.get('fineClay', 0) > 0 && S.mode === 'throw') { store.set('fineClay', store.get('fineClay', 0) - 1); TH.fine = true; setTimeout(() => showHint('수비장에서 거른 고운 흙을 올렸어요. 매끈하게 나와요.', 4), 800); } return r; }; }
+{ const pm = pieceMesh; pieceMesh = function (pc) { const m = pm(pc); if (pc.fine) m.traverse(o => { if (o.isMesh && o.material && 'roughness' in o.material) { o.material.roughness = Math.max(.05, o.material.roughness * .5); if ('clearcoat' in o.material) o.material.clearcoat = Math.max(o.material.clearcoat || 0, .8); } }); return m; }; }
+
+/* ── 4. 말림 선반 (계절·날씨) ── */
+const DRY = (() => {
+  const SPOT = { eave: { x: 4.0, z: -4.45, n: '처마 밑' }, yard: { x: 4.1, z: -7.4, n: '마당' } };
+  const g = new THREE.Group(); scene.add(g); const wood = std('#8a6442', .8);
+  [-.32, .32].forEach(x => [-.12, .12].forEach(z => mesh(new THREE.BoxGeometry(.03, .9, .03), wood, x, .45, z, g))); [.2, .5, .8].forEach(y => mesh(new THREE.BoxGeometry(.7, .02, .28), wood, 0, y, 0, g));
+  const slots = new THREE.Group(); g.add(slots); doyaHit(.8, 1, .4, 0, .5, 0, { act: 'dry' }, g);
+  const o = { list: store.get('dryRack', []), place: store.get('dryPlace', 'eave') };
+  const save = () => store.set('dryRack', o.list);
+  function rate() { let r = 1 / 40; // 40분이면 꾸덕
+    const T = kmaFresh() && KMA.temp != null ? KMA.temp : 15, W = kmaFresh() && KMA.wind != null ? KMA.wind : 2; r *= clamp(.6 + (T - 5) / 25, .4, 1.6) * (1 + W * .06);
+    if (o.place === 'yard') { if (raining()) return 0; r *= kmaFresh() && KMA.sky === '맑음' ? 1.8 : 1.3; } else if (raining()) r *= .6;
+    return r; }
+  function tick() { const now = Date.now(), r = rate(); o.list.forEach(it => { const mins = (now - (it.last || now)) / 60000; it.d = Math.min(1.6, (it.d || 0) + mins * r); it.last = now; }); save(); render(); }
+  function stateOf(d) { return d < .55 ? '아직 촉촉' : d < .9 ? '꾸덕꾸덕 · 깎기 좋아요' : d < 1.25 ? '꽤 말랐어요 · 서둘러요' : '바싹 말랐어요'; }
+  function render() { const s = SPOT[o.place]; g.position.set(s.x, 0, s.z); g.rotation.y = o.place === 'eave' ? 0 : -.6;
+    while (slots.children.length) { const c = slots.children.pop(); c.traverse(x => x.geometry && x.geometry.dispose()); }
+    o.list.slice(0, 6).forEach((it, i) => { try { const m = pieceMesh({ type: 'lathe', prof: it.prof, glaze: 'baek', k: 1 }); const bb = new THREE.Box3().setFromObject(m), h = bb.max.y - bb.min.y, sc = Math.min(.18 / h, .2 / (bb.max.x - bb.min.x)); m.scale.multiplyScalar(sc); m.position.set(-.22 + (i % 3) * .22, [.21, .51][Math.floor(i / 3)] - bb.min.y * sc, 0); const col = C('#8a7d70').lerp(C('#ddd4c6'), clamp(it.d || 0, 0, 1)); m.traverse(x => { if (x.isMesh) { x.material = std('#000', .95); x.material.color.copy(col); } }); slots.add(m); } catch (e) {} }); }
+  o.add = (spec, pc) => { const prof = pc.prof || WIRE.profOf(spec); const sp = { R: Array.from(spec.R), Ri: Array.from(spec.Ri), H: spec.H, uf: spec.uf, opened: spec.opened, bottomless: spec.bottomless }; o.list.unshift({ id: Date.now().toString(36), prof, spec: sp, pc: Object.assign({}, pc, { prof: undefined }), d: 0, last: Date.now(), fine: !!TH.fine }); o.list = o.list.slice(0, 6); save(); render(); toast(`말림 선반(${SPOT[o.place].n})에 올렸어요. 꾸덕해지면 굽을 깎아요.`, null, null, 5); };
+  o.open = () => { tick(); const s = SPOT[o.place]; const wx = raining() ? (o.place === 'yard' ? '비가 와요! 마당에선 안 말라요. 처마 밑으로 옮겨요.' : '비가 와서 천천히 말라요.') : (kmaFresh() && KMA.sky === '맑음' ? '맑은 날이에요. 마당에 내놓으면 빨리 말라요.' : '');
+    const rows = o.list.map((it, i) => { const r = el('div'); r.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px'; const a = el('span'); a.textContent = `${it.pc.name || '물레 그릇'} · ${stateOf(it.d)}`; const b = el('span'); b.style.cssText = 'display:flex;gap:6px';
+      if (it.d >= .55) b.append(btn('굽 깎기', () => { closeSheet(); o.list.splice(i, 1); save(); render(); go('wheel'); setTimeout(() => { try { TH.fine = it.fine; dryAndTrim(it.spec); if (it.d > 1.25) setTimeout(() => showHint('너무 말라서 굽칼이 튀어요. 살살!', 5), 1500); } catch (e) {} }, 1600); }, 'chip on'));
+      b.append(btn('가마로', () => { closeSheet(); o.list.splice(i, 1); save(); render(); const pc = Object.assign({}, it.pc, { type: 'lathe', prof: it.prof, by: S.nick }); if (it.fine) pc.fine = true; S.pending = { stage: 'glaze', piece: pc }; S.mode = 'stamp'; updateRail(); glazeSheet(); })); r.append(a, b); return r; });
+    sheet('말림 선반', `${s.n}에 있어요. ${wx}`, rows.length ? rows : [Object.assign(el('div'), { textContent: '비어 있어요. 물레에서 실로 뗀 뒤 「말림 선반에 올리기」를 눌러요.' })], [btn(o.place === 'eave' ? '마당에 내놓기' : '처마 밑으로 옮기기', () => { tick(); o.place = o.place === 'eave' ? 'yard' : 'eave'; store.set('dryPlace', o.place); render(); closeSheet(); toast(o.place === 'yard' ? '마당에 내놨어요. 햇볕과 바람에 빨리 말라요.' : '처마 밑으로 옮겼어요. 비 와도 괜찮아요.', null, null, 4); }), btn('닫기', closeSheet)]); };
+  render(); setInterval(tick, 30000);
+  setInterval(() => { if (o.place === 'yard' && raining() && o.list.length && !o.told) { o.told = true; toast('비가 와요! 마당 말림 선반을 처마 밑으로 옮길까요? (안 옮겨도 망가지진 않아요)', '옮기기', () => { tick(); o.place = 'eave'; store.set('dryPlace', 'eave'); render(); }, 10); } if (!raining()) o.told = false; }, 60000);
+  return o;
+})();
+doyaTap('dry', () => DRY.open());
+doyaZone(() => ({ id: 'dry', x: DRY.place === 'eave' ? 3.7 : 3.7, z: DRY.place === 'eave' ? -5.0 : -6.8, r: .5, text: '말림 선반', run: () => DRY.open() }));
+// 실로 뗀 뒤 선택지에 추가
+{ const sh = sheet; sheet = function (title, desc, opts, foot) { if (title === '실로 떼어 냈어요' && Array.isArray(foot) && S.mode === 'throw') { try { const spec = WIRE.cutSpec(thSpec(), WIRE.hc || 0); foot.splice(1, 0, btn('말림 선반에 올리기', () => { closeSheet(); DRY.add(spec, { prof: WIRE.profOf(spec) }); throwReset(); buildThrowMesh(); updateRail(); SFX.thud(); })); } catch (e) {} } return sh.apply(this, arguments); }; }
+
+/* ── 5. 수호상 ── */
+const GUARD = (() => {
+  const FORMS = { owl: '부엉이', toad: '두꺼비', haetae: '해태', pig: '복돼지', dog: '강아지' };
+  function make(f, col) { const g = new THREE.Group(), M = std(col, .3), D = std('#2a2420', .5);
+    if (f === 'owl') { const b = mesh(new THREE.SphereGeometry(.05, 16, 12), M, 0, .05, 0, g); b.scale.set(1, 1.25, .95); [-1, 1].forEach(s => { mesh(new THREE.ConeGeometry(.015, .03, 8), M, s * .025, .115, 0, g); mesh(new THREE.TorusGeometry(.012, .003, 6, 12), D, s * .02, .07, -.045, g); }); mesh(new THREE.ConeGeometry(.006, .015, 6), D, 0, .058, -.05, g).rotation.x = Math.PI / 2 + .3; }
+    else if (f === 'toad') { const b = mesh(new THREE.SphereGeometry(.055, 16, 12), M, 0, .035, 0, g); b.scale.set(1.2, .7, 1); [-1, 1].forEach(s => { mesh(new THREE.SphereGeometry(.015, 10, 8), M, s * .03, .07, -.035, g); mesh(new THREE.SphereGeometry(.006, 8, 6), D, s * .03, .075, -.048, g); }); mesh(new THREE.TorusGeometry(.02, .003, 6, 12, Math.PI), D, 0, .045, -.06, g).rotation.z = Math.PI; }
+    else if (f === 'haetae') { const b = mesh(new THREE.SphereGeometry(.045, 14, 10), M, 0, .045, .01, g); b.scale.set(.9, 1, 1.2); const h = mesh(new THREE.SphereGeometry(.035, 14, 10), M, 0, .1, -.03, g); mesh(new THREE.TorusGeometry(.036, .012, 8, 16), M, 0, .1, -.015, g); mesh(new THREE.ConeGeometry(.008, .03, 6), M, 0, .14, -.03, g); [-1, 1].forEach(s => mesh(new THREE.SphereGeometry(.006, 8, 6), D, s * .014, .108, -.062, g)); }
+    else if (f === 'pig') { const b = mesh(new THREE.SphereGeometry(.055, 16, 12), M, 0, .05, 0, g); const sn = mesh(new THREE.CylinderGeometry(.018, .02, .02, 12), M, 0, .045, -.058, g); sn.rotation.x = Math.PI / 2; [-1, 1].forEach(s => { mesh(new THREE.ConeGeometry(.014, .025, 8), M, s * .03, .1, -.01, g); mesh(new THREE.SphereGeometry(.005, 6, 6), D, s * .018, .065, -.05, g); }); }
+    else { const b = mesh(new THREE.SphereGeometry(.05, 16, 12), M, 0, .05, 0, g); [-1, 1].forEach(s => { const e = mesh(new THREE.SphereGeometry(.018, 10, 8), D, s * .045, .06, 0, g); e.scale.set(.5, 1.4, .9); mesh(new THREE.SphereGeometry(.006, 8, 6), D, s * .018, .06, -.047, g); }); mesh(new THREE.SphereGeometry(.008, 8, 6), D, 0, .048, -.052, g); }
+    g.traverse(x => { if (x.isMesh) x.castShadow = true; }); return g; }
+  const base = new THREE.Group(); base.position.set(KILN.x + .73, .97, KILN.z); scene.add(base); mesh(rbox(.16, .03, 1.08, .008), std('#6e4c33', .8), 0, 0, 0, base); [-.45, .45].forEach(z => mesh(new THREE.BoxGeometry(.03, .1, .03), std('#5a3d26', .8), -.05, -.06, z, base)); mesh(new THREE.BoxGeometry(.005, .05, 1.04), std('#a8322a', .8), .08, -.035, 0, base, false); const holder = new THREE.Group(); holder.position.y = .015; base.add(holder);
+  doyaHit(.3, .3, 1.15, 0, .12, 0, { act: 'guard' }, base);
+  const o = { list: [], mine: null };
+  async function load() { const { db, id } = await doyaApi(); if (!db) return; o.id = id; try { const qs = await db.collection('guard').get(); o.list = qs.docs.map(d => Object.assign({ id: d.id }, d.data() || {})).filter(x => FORMS[x.f] && /^#[0-9a-f]{6}$/i.test(x.c || '')); o.mine = o.list.find(x => x.id === id) || null; render(); } catch (e) {} }
+  function render() { while (holder.children.length) holder.remove(holder.children[0]); o.list.slice(0, 8).forEach((x, i) => { const m = make(x.f, x.c); m.position.set(0, 0, -.47 + i * (.94 / 7)); m.rotation.y = -Math.PI / 2 + rand(-.2, .2); m.scale.setScalar(1.15); holder.add(m); }); }
+  o.open = () => { const opts = []; let f = (o.mine && o.mine.f) || 'owl', c = (o.mine && o.mine.c) || (GLAZES[0] && GLAZES[0].c) || '#f4f2ec';
+    const r1 = el('div'); r1.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px'; Object.entries(FORMS).forEach(([k, n]) => { const b = btn(n, () => { f = k; [...r1.children].forEach(x => x.classList.toggle('on', x === b)); }); if (k === f) b.classList.add('on'); r1.append(b); });
+    const r2 = el('div'); r2.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;margin-top:8px'; GLAZES.forEach(gl => { const b = btn(gl.name, () => { c = gl.c; [...r2.children].forEach(x => x.classList.toggle('on', x === b)); }); if (gl.c === c) b.classList.add('on'); r2.append(b); });
+    sheet('가마 수호상', `가마 옆 단에 내가 빚은 작은 수호상을 세워요. 역사 속 가마신과는 다른, 초소요호만의 지킴이예요. 한 사람에 하나, 다시 빚으면 바뀌어요. (지금 ${o.list.length}개)`, [r1, r2], [btn(o.mine ? '다시 빚어 세우기' : '빚어서 세우기', async () => { closeSheet(); const { db, id } = await doyaApi(); if (!db || !id) { toast('지금은 세울 수 없어요.'); return; } try { await db.doc('guard/' + id).set({ f, c, nick: String(S.nick || '손님').slice(0, 12) }); } catch (e) {} await load(); SFX.thud(); toast(`${FORMS[f]} 수호상을 가마 옆에 세웠어요.`, null, null, 4); try { teacherSay(pick(['든든하네요. 이번 가마는 걱정 없겠어요.', '수호상도 눈은 귀엽게. 그게 초소요호 스타일이에요.']), 4); } catch (e) {} }, 'chip on'), btn('닫기', closeSheet)]); };
+  load(); setInterval(load, 90000);
+  return o;
+})();
+doyaTap('guard', () => GUARD.open());
+{ const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln') ui.acts.append(btn('수호상 세우기', () => GUARD.open())); }; }
+
+/* ── 6. 마당에 내 작품 놓기 ── */
+const YARD = (() => {
+  const P = { x: .9, z: -10.9 }; const g = new THREE.Group(); g.position.set(P.x, 0, P.z); scene.add(g);
+  const wood = std('#8b6a48', .8); mesh(rbox(1.9, .06, 1.1, .02), wood, 0, .32, 0, g); [[-.85, -.45], [.85, -.45], [-.85, .45], [.85, .45]].forEach(([x, z]) => mesh(new THREE.BoxGeometry(.07, .3, .07), std('#6a4c32', .8), x, .15, z, g)); for (let i = 0; i < 7; i++) mesh(new THREE.BoxGeometry(.004, .005, 1.08), std('#6a4c32', .9), -.81 + i * .27, .353, 0, g, false);
+  const holder = new THREE.Group(); holder.position.y = .35; g.add(holder); doyaHit(2, .7, 1.2, 0, .35, 0, { act: 'yard' }, g);
+  const SL = 12, slot = i => V3(-.75 + (i % 6) * .3, 0, -.25 + Math.floor(i / 6) * .5);
+  const o = { docs: [] };
+  async function load() { const { db, id } = await doyaApi(); if (!db) return; o.id = id; try { const qs = await db.collection('yard').get(); o.docs = qs.docs.map(d => Object.assign({ id: d.id }, d.data() || {})); render(); } catch (e) {} }
+  function render() { while (holder.children.length) { const c = holder.children.pop(); c.traverse(x => x.geometry && x.geometry.dispose()); } const used = new Set(); let k = 0;
+    o.docs.forEach(d => (Array.isArray(d.g) ? d.g : []).slice(0, 3).forEach(gid => { const pc = (GAL.list || []).find(x => x._id === gid); if (!pc || k >= SL) return; try { const m = pieceMesh(pc), bb = new THREE.Box3().setFromObject(m), h = bb.max.y - bb.min.y, sc = Math.min(.28 / Math.max(h, .01), .26 / Math.max(bb.max.x - bb.min.x, .01)); m.scale.multiplyScalar(sc); const p = slot(k++); m.position.set(p.x, -bb.min.y * sc, p.z); m.rotation.y = rand(-.4, .4); holder.add(m); } catch (e) {} })); }
+  o.open = async () => { await load(); const mine = (GAL.list || []).filter(x => x.by === S.nick).slice(0, 18); const myDoc = o.docs.find(d => d.id === o.id); let sel = new Set(myDoc && Array.isArray(myDoc.g) ? myDoc.g : []);
+    const grid = el('div'); grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto';
+    if (!mine.length) grid.textContent = '내 이름으로 선반에 올린 작품이 아직 없어요.';
+    mine.forEach(pc => { const b = btn(pc.name || (pc.type === 'mini' ? '작은 것' : pc.type === 'slab' ? '판 작품' : '물레 그릇'), () => { if (sel.has(pc._id)) sel.delete(pc._id); else { if (sel.size >= 3) { toast('마당에는 세 점까지 놓을 수 있어요.'); return; } sel.add(pc._id); } b.classList.toggle('on', sel.has(pc._id)); }); if (sel.has(pc._id)) b.classList.add('on'); grid.append(b); });
+    sheet('마당 평상', '내 작품을 세 점까지 골라 마당 평상에 내놓아요. 지나가는 사람들이 구경해요. 비 와도 망가지지 않아요.', [grid], [btn('내놓기', async () => { closeSheet(); const { db, id } = await doyaApi(); if (!db || !id) return; try { await db.doc('yard/' + id).set({ g: [...sel].slice(0, 3), nick: String(S.nick || '손님').slice(0, 12) }); } catch (e) {} await load(); SFX.thud(); toast('마당 평상에 내놨어요.', null, null, 3); }, 'chip on'), btn('닫기', closeSheet)]); };
+  load(); setInterval(load, 120000); setTimeout(render, 8000);
+  return o;
+})();
+doyaTap('yard', () => YARD.open());
+doyaZone(() => [{ id: 'yard', x: YARD && .9, z: -10.1, r: .6, text: '마당 평상 (작품 내놓기)', run: () => YARD.open() }, { id: 'guard', x: KILN.x + 1.3, z: KILN.z - .6, r: .35, text: '가마 수호상', run: () => GUARD.open() }]);
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
