@@ -6713,7 +6713,7 @@ const BAMBOO = (() => {
   const stalkM = std('#7d9a52', .55), nodeM = std('#5f7a3c', .6), leafM = new THREE.MeshStandardMaterial({ color: C('#6f9a4a'), roughness: .7, side: THREE.DoubleSide });
   const leafG = new THREE.PlaneGeometry(.06, .22); leafG.translate(0, .11, 0);
   const st = [];
-  for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = .25 + Math.sqrt(i / 46) * 1.9, x = cx + Math.cos(a) * r * 1.1, z = cz + Math.sin(a) * r * 1.4, h = 3.2 + Math.random() * 2.2, rad = .03 + Math.random() * .02;
+  for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = .25 + Math.sqrt(i / 46) * 1.9, x = cx + Math.cos(a) * r * 1.1, z = cz + Math.sin(a) * r * 1.4, h = 3.2 + Math.random() * 2.2, rad = .03 + Math.random() * .02; if (Math.hypot(x + 6.7, z + 10.3) < 1.5) continue;
     const s = new THREE.Group(); s.position.set(x, 0, z); g.add(s); const seg = 7; for (let k = 0; k < seg; k++) { const m = mesh(new THREE.CylinderGeometry(rad * .96, rad, h / seg - .01, 8), stalkM, 0, h / seg * (k + .5), 0, s); m.castShadow = k < 2; mesh(new THREE.CylinderGeometry(rad * 1.12, rad * 1.12, .018, 8), nodeM, 0, h / seg * (k + 1), 0, s, false); }
     for (let k = 0; k < 9; k++) { const lf = new THREE.Mesh(leafG, leafM); lf.position.set(0, h * (.55 + k * .05), 0); lf.rotation.set(-.9 - Math.random() * .5, Math.random() * TAU, 0); s.add(lf); }
     st.push({ s, ph: Math.random() * TAU, k: .015 + Math.random() * .02 }); }
@@ -6758,7 +6758,7 @@ doyaZone(() => [{ id: 'bamboo', x: BAMBOO.cx + 2.6, z: BAMBOO.cz + .4, r: .8, te
 
 /* ── 3. 수비장 · 물레방아 ── */
 const SUBI = (() => {
-  const P = { x: 2.9, z: -10.9 }, g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.rotation.y = Math.PI / 2; g.scale.setScalar(.85); scene.add(g); DOYA.subi = P;
+  const P = { x: -6.7, z: -10.3 }, g = new THREE.Group(); g.position.set(P.x, 0, P.z); g.rotation.y = -Math.PI / 2; g.scale.setScalar(.85); scene.add(g); DOYA.subi = P;
   const wood = std('#7a5536', .8), woodD = std('#5a3d26', .85), stone = std('#9a948c', .9), water = new THREE.MeshStandardMaterial({ color: C('#7fa6b3'), roughness: .15, transparent: true, opacity: .85 });
   // 물레방아
   const wh = new THREE.Group(); wh.position.set(.9, .75, 0); g.add(wh); const R = .68;
@@ -6787,7 +6787,7 @@ const SUBI = (() => {
   return o;
 })();
 doyaTap('subi', () => SUBI.play());
-doyaZone(() => ({ id: 'subi', x: SUBI.P.x + .3, z: SUBI.P.z + 1.4, r: .7, text: '수비장 (물레방아)', run: () => SUBI.play() }));
+doyaZone(() => ({ id: 'subi', x: SUBI.P.x + 1.3, z: SUBI.P.z + .2, r: .7, text: '수비장 (물레방아)', run: () => SUBI.play() }));
 // 고운 흙: 다음 물레 작품에 쓰기
 { const tr = throwReset; throwReset = function () { const r = tr.apply(this, arguments); TH.fine = false; if (store.get('fineClay', 0) > 0 && S.mode === 'throw') { store.set('fineClay', store.get('fineClay', 0) - 1); TH.fine = true; setTimeout(() => showHint('수비장에서 거른 고운 흙을 올렸어요. 매끈하게 나와요.', 4), 800); } return r; }; }
 { const pm = pieceMesh; pieceMesh = function (pc) { const m = pm(pc); if (pc.fine) m.traverse(o => { if (o.isMesh && o.material && 'roughness' in o.material) { o.material.roughness = Math.max(.05, o.material.roughness * .5); if ('clearcoat' in o.material) o.material.clearcoat = Math.max(o.material.clearcoat || 0, .8); } }); return m; }; }
