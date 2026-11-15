@@ -3080,7 +3080,7 @@ function galParse(snap) {
     if (d.birdName) pc.birdName = String(d.birdName).slice(0, 12);
     if (d.raku && typeof d.raku === 'object' && RAKU_S[d.raku.s]) { pc.raku = { s: d.raku.s, seed: Math.floor(gnum(d.raku.seed, 0, 1e9, 1)), d: gnum(d.raku.d, 0, 1, .5), c: gnum(d.raku.c, 0, 1, .5), l: gnum(d.raku.l, 0, 1, .5) }; if (Array.isArray(d.raku.m)) pc.raku.m = d.raku.m.slice(0, 24).map(l => Array.isArray(l) ? l.slice(0, 40).filter(q => Array.isArray(q) && isFinite(+q[0]) && isFinite(+q[1])).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1)]) : []).filter(l => l.length > 1); if (Array.isArray(d.raku.f)) pc.raku.f = d.raku.f.slice(0, 12).filter(q => Array.isArray(q) && q.length >= 4 && q.every(v => isFinite(+v))).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1), clamp(+q[2], -4, 4), clamp(+q[3], 0, 1)]); }
     if (/^#[0-9a-f]{6}$/i.test(d.bird || '')) pc.bird = d.bird;
-    if (['bamboo', 'wave', 'stone', 'cloud', 'persim'].includes(d.mun)) pc.mun = d.mun; if (d.fine === true) pc.fine = true;
+    if (['bamboo', 'wave', 'stone', 'cloud', 'persim', 'dipper', 'cass', 'orion', 'tri'].includes(d.mun)) pc.mun = d.mun; if (d.fine === true) pc.fine = true;
     if (d.yo && typeof d.yo === 'object' && ['top', 'front', 'back', 'low'].includes(d.yo.spot)) pc.yo = { seed: Math.floor(gnum(d.yo.seed, 0, 1e9, 1)), spot: d.yo.spot, ash: gnum(d.yo.ash, 0, 1, 0), flash: gnum(d.yo.flash, 0, 1, 0) };
     if (d.trace && typeof d.trace === 'object') { const tr = {}; ['body', 'belly', 'wing', 'ink', 'spot'].forEach(k => { if (/^#[0-9a-f]{6}$/i.test(d.trace[k] || '')) tr[k] = d.trace[k]; }); if (tr.body && tr.belly && tr.ink) { tr.n = String(d.trace.n || '').slice(0, 12); tr.wing = tr.wing || tr.body; if (['petal', 'maple', 'ginkgo'].includes(d.trace.motif)) tr.motif = d.trace.motif; pc.trace = tr; } }
     if (typeof d.stampImg === 'string' && d.stampImg.length < 120000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.stampImg)) pc.stampImg = d.stampImg;
@@ -6713,7 +6713,7 @@ const BAMBOO = (() => {
   const stalkM = std('#7d9a52', .55), nodeM = std('#5f7a3c', .6), leafM = new THREE.MeshStandardMaterial({ color: C('#6f9a4a'), roughness: .7, side: THREE.DoubleSide });
   const leafG = new THREE.PlaneGeometry(.06, .22); leafG.translate(0, .11, 0);
   const st = [];
-  for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = .25 + Math.sqrt(i / 46) * 1.9, x = cx + Math.cos(a) * r * 1.1, z = cz + Math.sin(a) * r * 1.4, h = 3.2 + Math.random() * 2.2, rad = .03 + Math.random() * .02; if (Math.hypot(x + 6.7, z + 10.3) < 1.5) continue;
+  for (let i = 0; i < 46; i++) { const a = i * 2.39996, r = .25 + Math.sqrt(i / 46) * 1.9, x = cx + Math.cos(a) * r * 1.1, z = cz + Math.sin(a) * r * 1.4, h = 3.2 + Math.random() * 2.2, rad = .03 + Math.random() * .02; if (Math.hypot(x + 6.7, z + 10.3) < 1.5) continue; { let near = false; for (let q = 0; q < 1; q += .01) { const pp = GARDEN.curve.getPointAt(q); if (Math.hypot(pp.x - x, pp.z - z) < .85) { near = true; break; } } if (near) continue; }
     const s = new THREE.Group(); s.position.set(x, 0, z); g.add(s); const seg = 7; for (let k = 0; k < seg; k++) { const m = mesh(new THREE.CylinderGeometry(rad * .96, rad, h / seg - .01, 8), stalkM, 0, h / seg * (k + .5), 0, s); m.castShadow = k < 2; mesh(new THREE.CylinderGeometry(rad * 1.12, rad * 1.12, .018, 8), nodeM, 0, h / seg * (k + 1), 0, s, false); }
     for (let k = 0; k < 9; k++) { const lf = new THREE.Mesh(leafG, leafM); lf.position.set(0, h * (.55 + k * .05), 0); lf.rotation.set(-.9 - Math.random() * .5, Math.random() * TAU, 0); s.add(lf); }
     st.push({ s, ph: Math.random() * TAU, k: .015 + Math.random() * .02 }); }
@@ -6726,8 +6726,8 @@ const BAMBOO = (() => {
 })();
 
 /* ── 2. 자연 문양 ── */
-const MUN = { bamboo: '대나무 잎', wave: '물결', stone: '돌', cloud: '구름', persim: '감잎' };
-const MUN_SRC = { bamboo: '대나무숲', wave: '분수', stone: '수비장 옆 돌', cloud: '창가 하늘', persim: '정원 감나무' };
+const MUN = { bamboo: '대나무 잎', wave: '물결', stone: '돌', cloud: '구름', persim: '감잎', dipper: '북두칠성', cass: '카시오페이아', orion: '오리온', tri: '여름 대삼각형' };
+const MUN_SRC = { bamboo: '대나무숲', wave: '분수', stone: '수비장 옆 돌', cloud: '창가 하늘', persim: '정원 감나무', dipper: '북쪽 하늘', cass: '북쪽 하늘', orion: '겨울 하늘', tri: '여름 하늘' };
 function munGot() { return store.get('mun', []); }
 function munDraw(g, k, w, h, col = '#2c4f9a') {
   g.save(); g.strokeStyle = col; g.fillStyle = col; g.lineCap = 'round'; g.lineJoin = 'round';
@@ -6735,6 +6735,8 @@ function munDraw(g, k, w, h, col = '#2c4f9a') {
   else if (k === 'wave') { g.lineWidth = 2.2; for (let r = 0; r < 4; r++) { g.beginPath(); for (let x = 0; x <= w; x += 4) { const y = h * (.25 + r * .18) + Math.sin(x / w * TAU * 4 + r) * 6; x ? g.lineTo(x, y) : g.moveTo(x, y); } g.stroke(); } }
   else if (k === 'stone') { g.lineWidth = 2; [[.15, .55, 18], [.38, .7, 12], [.6, .5, 22], [.85, .68, 14]].forEach(([u, v, r]) => { g.beginPath(); for (let a = 0; a <= TAU + .01; a += .5) { const rr = r * (.8 + .25 * Math.sin(a * 3 + u * 9)); a ? g.lineTo(u * w + Math.cos(a) * rr * 1.3, v * h + Math.sin(a) * rr) : g.moveTo(u * w + rr * 1.3, v * h); } g.stroke(); g.globalAlpha = .25; g.fill(); g.globalAlpha = 1; }); }
   else if (k === 'cloud') { g.lineWidth = 2; [[.2, .35], [.55, .55], [.85, .3]].forEach(([u, v]) => { const x = u * w, y = v * h; g.beginPath(); g.arc(x, y, 9, Math.PI, 0); g.arc(x + 14, y - 4, 11, Math.PI, 0); g.arc(x + 30, y, 8, Math.PI, 0); g.lineTo(x - 9, y); g.stroke(); g.beginPath(); g.moveTo(x - 14, y + 8); g.quadraticCurveTo(x + 10, y + 14, x + 40, y + 6); g.stroke(); }); }
+  else if (['dipper', 'cass', 'orion', 'tri'].includes(k)) { const P = { dipper: [[.08, .3], [.22, .38], [.36, .42], [.5, .5], [.58, .8], [.8, .82], [.86, .5]], cass: [[.1, .3], [.3, .7], [.5, .4], [.7, .75], [.9, .35]], orion: [[.3, .15], [.7, .2], [.42, .5], [.5, .52], [.58, .55], [.32, .88], [.74, .85]], tri: [[.2, .25], [.82, .3], [.5, .85]] }[k], E = { dipper: [[0, 1], [1, 2], [2, 3], [3, 0], [3, 4], [4, 5], [5, 6]], cass: [[0, 1], [1, 2], [2, 3], [3, 4]], orion: [[0, 2], [1, 4], [2, 3], [3, 4], [2, 5], [4, 6], [0, 1]], tri: [[0, 1], [1, 2], [2, 0]] }[k];
+    for (const off of [0, .5]) { const X = u => (u * .45 + off + .02) * w, Y = v => (v * .8 + .1) * h; g.lineWidth = 1.2; g.globalAlpha = .7; E.forEach(([a, b]) => { g.beginPath(); g.moveTo(X(P[a][0]), Y(P[a][1])); g.lineTo(X(P[b][0]), Y(P[b][1])); g.stroke(); }); g.globalAlpha = 1; P.forEach(([u, v]) => { const x = X(u), y = Y(v); g.beginPath(); for (let j = 0; j < 10; j++) { const r = j % 2 ? 2.2 : 5.5, a = j * Math.PI / 5 - Math.PI / 2; g.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r); } g.closePath(); g.fill(); }); } }
   else if (k === 'persim') { [[.25, .5], [.7, .45]].forEach(([u, v]) => { const x = u * w, y = v * h; g.beginPath(); g.ellipse(x, y, 22, 11, -.5, 0, TAU); g.globalAlpha = .85; g.fill(); g.globalAlpha = 1; g.strokeStyle = '#f4f2ec'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(x - 18, y + 9); g.lineTo(x + 18, y - 9); g.stroke(); g.strokeStyle = col; }); g.beginPath(); g.arc(w * .48, h * .7, 9, 0, TAU); g.globalAlpha = .6; g.fill(); g.globalAlpha = 1; }
   g.restore();
 }
@@ -6743,7 +6745,7 @@ function observe(k) {
   closeSheet(); const got = munGot().includes(k);
   const z = zoomBox(); const t = el('div', 'zt'); t.textContent = `${MUN_SRC[k]}을(를) 가만히 바라봐요…`; const bar = el('div'); bar.style.cssText = 'width:min(260px,70vw);height:6px;border-radius:3px;background:rgba(255,255,255,.2);overflow:hidden'; const i = el('i'); i.style.cssText = 'display:block;height:100%;width:0;background:#f4efe6;transition:width 3s linear'; bar.append(i); z.append(t, bar); requestAnimationFrame(() => i.style.width = '100%');
   if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 600, .5, .03 * MIX.amb, .5, 2.5, .5);
-  setTimeout(() => { bar.remove(); if (!got) { store.set('mun', munGot().concat(k)); } t.textContent = got ? `${MUN[k]} 문양, 다시 봐도 좋네요.` : `「${MUN[k]}」 문양을 얻었어요!`; const im = el('img', 'zimg'); im.src = munPreview(k, 200); im.alt = MUN[k] + ' 문양'; im.style.aspectRatio = '2/1'; const cap = el('div', 'zcap'); cap.textContent = `가마에 넣을 때 유약 고르는 화면에서 청화 문양으로 그릴 수 있어요. (${munGot().length}/5)`; z.append(im, cap); if (!got) { SFX.ding(); try { teacherSay(pick(['보는 게 반이에요. 그리는 건 나머지 반.', '문양은 밖에 다 있어요. 보기만 하면 돼요.']), 4); } catch (e) {} } }, 3100);
+  setTimeout(() => { bar.remove(); if (!got) { store.set('mun', munGot().concat(k)); } t.textContent = got ? `${MUN[k]} 문양, 다시 봐도 좋네요.` : `「${MUN[k]}」 문양을 얻었어요!`; const im = el('img', 'zimg'); im.src = munPreview(k, 200); im.alt = MUN[k] + ' 문양'; im.style.aspectRatio = '2/1'; const cap = el('div', 'zcap'); cap.textContent = `가마에 넣을 때 유약 고르는 화면에서 청화 문양으로 그릴 수 있어요. (${munGot().length}/${Object.keys(MUN).length})`; z.append(im, cap); if (!got) { SFX.ding(); try { teacherSay(pick(['보는 게 반이에요. 그리는 건 나머지 반.', '문양은 밖에 다 있어요. 보기만 하면 돼요.']), 4); } catch (e) {} } }, 3100);
 }
 doyaTap('doya', c => { if (c.id === 'bamboo') { if (S.mode === 'walk' && Math.hypot(WALK.x - BAMBOO.cx, WALK.z - BAMBOO.cz) > 4.5) { WALK.goal = { x: BAMBOO.cx + 2.6, z: BAMBOO.cz + .4, run: () => observe('bamboo') }; markGoal(BAMBOO.cx + 2.6, BAMBOO.cz + .4); return; } observe('bamboo'); } else if (c.id === 'persim') observe('persim'); else if (c.id === 'stone') observe('stone'); });
 doyaHit(1.6, 3, 1.6, GARDEN.tree.x, 1.8, GARDEN.tree.z, { act: 'doya', id: 'persim' });
@@ -6897,7 +6899,7 @@ const SKY = (() => {
     names.forEach((n, i) => { const [ra, de] = CAT[n], a = altAz(ra * 15 * rad, de * rad, t); o.alt[n] = a.alt; stars[i].position.copy(dir(a.alt, a.az, R)); });
     const pa = lg.attributes.position.array; LINES.forEach(([a, b], i) => { const A = stars[names.indexOf(a)].position, B = stars[names.indexOf(b)].position; pa.set([A.x, A.y, A.z, B.x, B.y, B.z], i * 6); }); lg.attributes.position.needsUpdate = true;
     try { starPts.quaternion.setFromAxisAngle(pole, -lst(t)); } catch (e) {} }
-  window.SKYV = o; update(); setInterval(update, 20000);
+  o.stars = stars; o.names = names; o.dirOf = (n) => stars[names.indexOf(n)].position; window.SKYV = o; update(); setInterval(update, 20000);
   // 매 프레임: 보이기, 달 빛나는 쪽 방향
   const tmpA = new THREE.Vector3(), tmpB = new THREE.Vector3();
   (function tk() { requestAnimationFrame(tk); if (!o.st) return; const sOp = starPts.material.opacity || 0;
@@ -6907,6 +6909,46 @@ const SKY = (() => {
   return o;
 })();
 { const kt = kmaText; kmaText = function () { const r = kt.apply(this, arguments); try { const [em, nm] = (() => { const p = SKY.st ? SKY.st.phase : 0; return p < .03 || p > .97 ? ['🌑', '그믐·삭'] : p < .22 ? ['🌒', '초승달'] : p < .28 ? ['🌓', '상현달'] : p < .47 ? ['🌔', '차오르는 달'] : p < .53 ? ['🌕', '보름달'] : p < .72 ? ['🌖', '기우는 달'] : p < .78 ? ['🌗', '하현달'] : ['🌘', '그믐달']; })(); return r ? `${r} · ${em} ${nm}` : r; } catch (e) { return r; } }; }
+
+
+/* ── 하늘 바라보기 ── */
+const SKYLOOK = (() => {
+  const KN = { polaris: '북극성', dubhe: '', alkaid: '', vega: '직녀성', altair: '견우성', deneb: '데네브', sirius: '시리우스', capella: '카펠라', aldeb: '알데바란', pleiad: '좀생이별', betel: '베텔게우스', rigel: '리겔', arct: '아르크투루스', spica: '스피카', antares: '안타레스', procyon: '프로키온', castor: '카스토르', pollux: '폴룩스', regulus: '레굴루스', fomal: '포말하우트' };
+  const CONS = { dipper: ['dubhe', 'merak', 'phecda', 'megrez', 'alioth', 'mizar', 'alkaid'], cass: ['caph', 'schedar', 'gcas', 'ruchbah', 'segin'], orion: ['betel', 'bella', 'alnitak', 'alnilam', 'mintaka', 'saiph', 'rigel'], tri: ['vega', 'altair', 'deneb'] };
+  const st = document.createElement('style'); st.textContent = `body.skyon>*:not(canvas):not(#skyV):not(script):not(style){visibility:hidden!important}#skyV{position:fixed;inset:0;z-index:90;touch-action:none;cursor:grab}#skyV .lb{position:absolute;transform:translate(-50%,10px);font-size:12px;color:rgba(230,236,255,.85);text-shadow:0 1px 3px #000;white-space:nowrap;pointer-events:none}#skyV .cn{position:absolute;transform:translate(-50%,-50%);border:1px solid rgba(190,210,255,.5);background:rgba(20,26,48,.55);color:#e6ecff;border-radius:14px;height:30px;padding:0 12px;font:inherit;font-size:13px;cursor:pointer}#skyV .cn.got{border-color:#e8c06a;color:#ffe6a8}#skyV .top{position:fixed;left:0;right:0;top:max(12px,env(safe-area-inset-top));display:flex;justify-content:center;pointer-events:none}#skyV .top span{background:rgba(10,14,28,.6);color:#e6ecff;border-radius:14px;padding:7px 14px;font-size:13px}#skyV .x{position:fixed;top:max(12px,env(safe-area-inset-top));right:12px;border:0;border-radius:18px;height:36px;padding:0 14px;background:rgba(255,255,255,.9);font:inherit;font-size:14px}`; document.head.append(st);
+  const cam = new THREE.PerspectiveCamera(70, 1, .05, 220); let on = false, yaw = Math.PI, pitch = .7, wrap = null, labels = {}, btns = {}, ptr = null;
+  const POS = V3(.8, 1.0, -10.2);
+  const rr = renderer.render.bind(renderer); renderer.render = function (sc, c) { if (on && sc === scene) { cam.aspect = innerWidth / innerHeight; cam.updateProjectionMatrix(); cam.position.copy(POS); cam.lookAt(POS.x + Math.sin(yaw) * Math.cos(pitch), POS.y + Math.sin(pitch), POS.z + Math.cos(yaw) * Math.cos(pitch)); return rr(sc, cam); } return rr(sc, c); };
+  function face(v) { const d = v.clone().sub(POS).normalize(); yaw = Math.atan2(d.x, d.z); pitch = clamp(Math.asin(d.y), .1, 1.45); }
+  function pos(v) { const p = v.clone().project(cam); if (p.z > 1) return null; return [(p.x + 1) / 2 * innerWidth, (1 - p.y) / 2 * innerHeight]; }
+  function tick() { if (!on) return; requestAnimationFrame(tick); const S2 = window.SKYV; if (!S2 || !S2.stars) return;
+    Object.entries(labels).forEach(([n, el2]) => { const al = S2.alt[n] || -1, p = al > .02 ? pos(S2.dirOf(n)) : null; el2.style.display = p ? '' : 'none'; if (p) { el2.style.left = p[0] + 'px'; el2.style.top = p[1] + 'px'; } });
+    Object.entries(btns).forEach(([k, b]) => { const mem = CONS[k], up = mem.every(n => (S2.alt[n] || -1) > .03); if (!up) { b.style.display = 'none'; return; } const c = mem.reduce((a, n) => a.add(S2.dirOf(n)), V3(0, 0, 0)).multiplyScalar(1 / mem.length), p = pos(c); b.style.display = p ? '' : 'none'; if (p) { b.style.left = p[0] + 'px'; b.style.top = (p[1] + 34) + 'px'; } });
+    if (labels._moon) { const sv = S2.st, p = sv && sv.m.alt > 0 ? pos(moon.position) : null; labels._moon.style.display = p ? '' : 'none'; if (p) { labels._moon.style.left = p[0] + 'px'; labels._moon.style.top = (p[1] + 18) + 'px'; } } }
+  function phaseName() { const p = window.SKYV && SKYV.st ? SKYV.st.phase : 0; return p < .03 || p > .97 ? '그믐·삭' : p < .22 ? '초승달' : p < .28 ? '상현달' : p < .47 ? '차오르는 달' : p < .53 ? '보름달' : p < .72 ? '기우는 달' : p < .78 ? '하현달' : '그믐달'; }
+  const o = {};
+  o.open = () => { if (on) return; try { closeSheet(); } catch (e) {} on = true; wrap = el('div'); wrap.id = 'skyV'; const top = el('div', 'top'); const ts = el('span'); top.append(ts); const night = (LIGHT.night || 0) > .4;
+    ts.textContent = night ? '끌어서 하늘을 둘러봐요. 별자리 이름을 누르면 문양이 돼요.' : '지금은 낮이라 별이 안 보여요. 밤에 다시 올려다봐요.';
+    const x = el('button', 'x'); x.type = 'button'; x.textContent = '그만 보기'; x.onclick = o.close; wrap.append(top, x);
+    Object.entries(KN).forEach(([n, t]) => { if (!t) return; const l = el('div', 'lb'); l.textContent = t; wrap.append(l); labels[n] = l; });
+    { const l = el('div', 'lb'); l.textContent = phaseName(); l.style.color = '#ffeac0'; wrap.append(l); labels._moon = l; }
+    const got = () => store.get('mun', []);
+    Object.keys(CONS).forEach(k => { const b = el('button', 'cn' + (got().includes(k) ? ' got' : '')); b.type = 'button'; b.textContent = MUN[k]; b.onclick = e => { e.stopPropagation(); if (!night) return; const had = got().includes(k); if (!had) { store.set('mun', got().concat(k)); b.classList.add('got'); SFX.ding(); o.msg(`✨ 「${MUN[k]}」 별자리 문양을 얻었어요! 가마에 넣을 때 청화 문양으로 그릴 수 있어요.`); } else o.msg(`${MUN[k]}, 오늘도 잘 떠 있네요.`); }; wrap.append(b); btns[k] = b; });
+    wrap.addEventListener('pointerdown', e => { if (e.target !== wrap) return; ptr = { x: e.clientX, y: e.clientY }; wrap.setPointerCapture(e.pointerId); wrap.style.cursor = 'grabbing'; });
+    wrap.addEventListener('pointermove', e => { if (!ptr) return; yaw -= (e.clientX - ptr.x) * .005; pitch = clamp(pitch + (e.clientY - ptr.y) * .005, .05, 1.5); ptr = { x: e.clientX, y: e.clientY }; });
+    wrap.addEventListener('pointerup', () => { ptr = null; wrap.style.cursor = 'grab'; });
+    document.body.append(wrap);
+    const S2 = window.SKYV; if (S2 && S2.st && S2.st.m.alt > .05) face(moon.position); else if (S2 && S2.stars) { const best = ['orion', 'tri', 'cass', 'dipper'].find(k => CONS[k].every(n => (S2.alt[n] || -1) > .1)); if (best) face(CONS[best].reduce((a, n) => a.add(S2.dirOf(n)), V3(0, 0, 0)).multiplyScalar(1 / CONS[best].length)); else { yaw = Math.PI; pitch = .8; } }
+    if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 400, .5, .02 * MIX.amb, .8, 2, .5);
+    if (night) setTimeout(() => { if (on) o.msg(`오늘 달은 ${phaseName()}. 끌어서 둘러보고, 별자리 이름을 누르면 문양이 돼요.`); }, 100);
+    document.body.classList.add('skyon'); o.msg = t => { ts.textContent = t; }; tick(); };
+  o.close = () => { on = false; document.body.classList.remove('skyon'); if (wrap) wrap.remove(); wrap = null; labels = {}; btns = {}; };
+  addEventListener('keydown', e => { if (on && e.key === 'Escape') o.close(); });
+  return o;
+})();
+{ const ra = renderActs; renderActs = function () { ra(); if (['fountain', 'wind'].includes(S.station)) ui.acts.append(btn('하늘 바라보기', () => SKYLOOK.open())); }; }
+{ const b = document.createElement('button'); b.type = 'button'; b.textContent = '🌌 하늘 바라보기'; b.style.cssText = 'position:fixed;left:12px;top:calc(env(safe-area-inset-top) + 58px);z-index:11;border:0;border-radius:16px;height:34px;padding:0 12px;background:rgba(255,255,255,.88);font:inherit;font-size:13px;color:#2d2924;box-shadow:0 1px 4px rgba(0,0,0,.15);display:none'; b.onclick = () => SKYLOOK.open(); document.body.append(b);
+  setInterval(() => { const show = S.mode === 'walk' && WALK.z < -4.2 && !document.getElementById('skyV'); b.style.display = show ? '' : 'none'; }, 500); }
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
