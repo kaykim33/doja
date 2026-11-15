@@ -3080,6 +3080,7 @@ function galParse(snap) {
     if (d.birdName) pc.birdName = String(d.birdName).slice(0, 12);
     if (d.raku && typeof d.raku === 'object' && RAKU_S[d.raku.s]) { pc.raku = { s: d.raku.s, seed: Math.floor(gnum(d.raku.seed, 0, 1e9, 1)), d: gnum(d.raku.d, 0, 1, .5), c: gnum(d.raku.c, 0, 1, .5), l: gnum(d.raku.l, 0, 1, .5) }; if (Array.isArray(d.raku.m)) pc.raku.m = d.raku.m.slice(0, 24).map(l => Array.isArray(l) ? l.slice(0, 40).filter(q => Array.isArray(q) && isFinite(+q[0]) && isFinite(+q[1])).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1)]) : []).filter(l => l.length > 1); if (Array.isArray(d.raku.f)) pc.raku.f = d.raku.f.slice(0, 12).filter(q => Array.isArray(q) && q.length >= 4 && q.every(v => isFinite(+v))).map(q => [clamp(+q[0], 0, 1), clamp(+q[1], 0, 1), clamp(+q[2], -4, 4), clamp(+q[3], 0, 1)]); }
     if (/^#[0-9a-f]{6}$/i.test(d.bird || '')) pc.bird = d.bird;
+    if (d.yo && typeof d.yo === 'object' && ['top', 'front', 'back', 'low'].includes(d.yo.spot)) pc.yo = { seed: Math.floor(gnum(d.yo.seed, 0, 1e9, 1)), spot: d.yo.spot, ash: gnum(d.yo.ash, 0, 1, 0), flash: gnum(d.yo.flash, 0, 1, 0) };
     if (d.trace && typeof d.trace === 'object') { const tr = {}; ['body', 'belly', 'wing', 'ink', 'spot'].forEach(k => { if (/^#[0-9a-f]{6}$/i.test(d.trace[k] || '')) tr[k] = d.trace[k]; }); if (tr.body && tr.belly && tr.ink) { tr.n = String(d.trace.n || '').slice(0, 12); tr.wing = tr.wing || tr.body; if (['petal', 'maple', 'ginkgo'].includes(d.trace.motif)) tr.motif = d.trace.motif; pc.trace = tr; } }
     if (typeof d.stampImg === 'string' && d.stampImg.length < 120000 && /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(d.stampImg)) pc.stampImg = d.stampImg;
     if (type === 'lathe') { pc.prof = gpts(d.prof, 400); if (pc.prof.length < 3) return null; pc.plate = !!d.plate; pc.k = gnum(d.k, .4, 1.5, 1); }
@@ -6593,6 +6594,108 @@ if (GOSA.on) {
 // 관리자: 소원 모아 보기
 { const oa = openAdmin; openAdmin = function () { const r = oa.apply(this, arguments); try { if (!BOARD.admin || !VISIT.db) return r; const box = document.querySelector('#admin .box') || (typeof ad !== 'undefined' && ad.querySelector('.box')); if (!box) return r; const sec = el('div', 'sec'); sec.append(el('h3', null, '가마 고사 소원')); const out = el('div'); out.textContent = '불러오는 중…'; sec.append(out); box.insertBefore(sec, box.children[3] || null);
   (async () => { try { const qs = await VISIT.db.collection('gosaw2611').get(); const L = qs.docs.map(d => d.data() || {}).sort((a, b) => (b.at || 0) - (a.at || 0)); out.innerHTML = ''; if (!L.length) { out.textContent = '아직 소원이 없어요.'; return; } L.slice(0, 100).forEach(w => { const row = el('div'); row.style.cssText = 'padding:5px 0;border-bottom:1px solid var(--line);font-size:13.5px'; row.textContent = `${w.nick || '손님'} · ${w.wish}`; out.append(row); }); } catch (e) { out.textContent = '불러오지 못했어요.'; } })(); } catch (e) {} return r; }; }
+
+
+/* ── 가마의 우연 (요변) ── */
+function yoRng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const YO_SPOT = { top: '윗칸', front: '불길 앞칸', back: '뒤칸', low: '아랫칸' };
+function makeYo() { const R = yoRng(Math.floor(Math.random() * 1e9)), spot = ['top', 'front', 'back', 'low'][Math.floor(R() * 4)]; return { seed: Math.floor(R() * 1e9), spot, ash: +(spot === 'top' ? .5 + R() * .5 : spot === 'front' ? .25 + R() * .4 : R() * .3).toFixed(2), flash: +(spot === 'front' ? .5 + R() * .5 : spot === 'low' ? R() * .2 : .1 + R() * .4).toFixed(2) }; }
+function yoDesc(y) { if (!y) return ''; const a = y.ash, f = y.flash, s = YO_SPOT[y.spot] || '';
+  const p = a > .65 ? '재가 내려앉아 초록 유리 방울이 맺혔어요' : a > .35 ? '재 티가 점점이 앉았어요' : '';
+  const q = f > .6 ? '불길 닿은 쪽 볼이 발그레해요' : f > .3 ? '한쪽에 불빛이 살짝 스쳤어요' : '';
+  return `${s} · ${[p, q].filter(Boolean).join(', ') || '고요하게 잘 구워졌어요'}`; }
+function yoTex(y, w = 256, h = 128) {
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h; const g = cv.getContext('2d'), R = yoRng(y.seed || 1);
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+  if (y.flash > .05) { const cx = R() * w; for (const dx of [0, w, -w]) { const gr = g.createRadialGradient(cx + dx, h * .45, 4, cx + dx, h * .45, w * .45); gr.addColorStop(0, `rgba(235,150,100,${.55 * y.flash})`); gr.addColorStop(1, 'rgba(235,150,100,0)'); g.fillStyle = gr; g.fillRect(0, 0, w, h); } }
+  const n = Math.floor(y.ash * 160); for (let i = 0; i < n; i++) { const x = R() * w, yy = R() * h * (y.spot === 'top' ? .7 : 1), r = .6 + R() * (y.ash > .6 ? 3.2 : 1.6); g.fillStyle = R() < .6 ? `rgba(120,140,80,${.5 + R() * .4})` : `rgba(110,85,60,${.4 + R() * .4})`; g.beginPath(); g.arc(x, yy, r, 0, TAU); g.fill(); if (r > 2.4 && R() < .5) { g.fillRect(x - .6, yy, 1.2, r * 3); } }
+  return cv;
+}
+{ const pm = pieceMesh; pieceMesh = function (pc) { const m = pm(pc); if (pc.yo && !pc.raku) { try { if (pc.type === 'lathe' && m.geometry) cylUV(m.geometry, false); const t = new THREE.CanvasTexture(yoTex(pc.yo)); t.encoding = THREE.sRGBEncoding; t.wrapS = t.wrapT = THREE.RepeatWrapping; const seen = new Set(); m.traverse(o => { if (!o.isMesh || !o.material || seen.has(o.material) || o.material.transparent || o.material.map) return; seen.add(o.material); o.material.map = t; o.material.needsUpdate = true; }); } catch (e) {} } return m; }; }
+
+/* ── 가마 여는 날 (2026.11.16 저녁 8시) ── */
+const KOPEN = (() => {
+  const q = (location.search.match(/[?&]day=([a-z-]+)/) || [])[1], preview = q === 'kilnopen';
+  const OPEN_AT = preview ? Date.now() + 25000 : Date.UTC(2026, 10, 16, 11, 0), START = Date.UTC(2026, 10, 15, 0, 0), END = Date.UTC(2026, 10, 30, 15, 0);
+  const COL = 'kiln2611', CUP = 'kilncup2611';
+  const o = { preview, openAt: OPEN_AT, adminOpen: 0, on: preview || (Date.now() >= START && Date.now() < END), list: [], cups: {}, shown: false };
+  if (!o.on) return o;
+  o.opened = () => Date.now() >= o.openAt || (o.adminOpen && Date.now() >= o.adminOpen);
+  o.waiting = () => !o.opened();
+  async function api() { try { const [db, u] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); return { db, id: await u.id() }; } catch (e) { return {}; } }
+  o.me = null; api().then(a => { o.me = a.id; o.db = a.db; if (a.db && !preview) { try { a.db.doc('kilnopen/2611').onSnapshot(s => { const d = s && s.exists ? s.data() : null; if (d && +d.at) o.adminOpen = +d.at; }); } catch (e) {} } });
+  const PREV = []; // 미리보기는 서버에 안 써요
+  async function load() {
+    if (preview) { o.list = PREV.slice(); return o.list; }
+    const { db } = await api(); if (!db) return o.list = [];
+    try { const qs = await db.collection(COL).get(); o.list = qs.docs.map(d => { const x = d.data() || {}; try { const pc = JSON.parse(String(x.d || '{}')); if (!['lathe', 'slab', 'mini'].includes(pc.type)) return null; return { id: d.id, uid: x.uid, nick: String(x.nick || '손님').slice(0, 12), at: +x.at || 0, pc }; } catch (e) { return null; } }).filter(Boolean).sort((a, b) => a.at - b.at);
+      const cq = await db.collection(CUP).get(); o.cups = {}; o.mineCup = {}; cq.docs.forEach(d => { const [pid, uid] = d.id.split('__'); o.cups[pid] = (o.cups[pid] || 0) + 1; if (uid === o.me) o.mineCup[pid] = 1; }); } catch (e) {}
+    return o.list;
+  }
+  // 가마에 넣으면: 여는 날까지 가마 속에서 기다려요
+  async function stash(done) {
+    const { db, id } = await api();
+    for (const pc of done) { pc.yo = pc.yo || makeYo(); pc.by = pc.by || S.nick; const body = Object.assign({}, pc); delete body._id;
+      if (preview || !db || !id) { PREV.push({ id: 'p' + Math.random().toString(36).slice(2, 10), uid: id || 'me', nick: String(S.nick || '나').slice(0, 12), at: Date.now(), pc }); continue; }
+      try { await db.collection(COL).add({ uid: id, nick: String(S.nick || '손님').slice(0, 12), at: Date.now(), d: JSON.stringify(body) }); } catch (e) { addToShelf(pc); } }
+  }
+  const kt = kilnTick; kilnTick = function (dt) {
+    if (o.waiting() && KILN_Q.length) { KF.firing += dt; if (KF.firing > KF.dur) { const done = KILN_Q.splice(0); KF.firing = 0; stash(done); SFX.thud(); toast(`${done.length}점이 가마 속에서 기다려요. ${whenText()} 가마 여는 날에 다 같이 꺼내요!`, null, null, 6); try { updateRail(); } catch (e) {} }
+      const tgt = .9 + KF.fed; KF.fed = Math.max(0, KF.fed - dt * .03); KF.lvl = lerp(KF.lvl, tgt, dt * .5); return; }
+    return kt.apply(this, arguments);
+  };
+  function whenText() { if (preview) return '곧'; const d = new Date(o.openAt + 9 * 3600e3), today = new Date(Date.now() + 9 * 3600e3); const same = d.getUTCDate() === today.getUTCDate(); return `${same ? '오늘' : `${d.getUTCMonth() + 1}/${d.getUTCDate()}`} 저녁 ${d.getUTCHours() > 12 ? d.getUTCHours() - 12 : d.getUTCHours()}시`; }
+  // 썸네일
+  let TR = null; function thumb(pc) { try { if (!TR) { const c = document.createElement('canvas'); c.width = c.height = 220; TR = { c, r: new THREE.WebGLRenderer({ canvas: c, antialias: true, alpha: true, preserveDrawingBuffer: true }), sc: new THREE.Scene(), cam: new THREE.PerspectiveCamera(30, 1, .01, 20) }; TR.r.outputEncoding = renderer.outputEncoding; TR.r.toneMapping = renderer.toneMapping; TR.sc.add(new THREE.HemisphereLight(0xfff4e6, 0x6b5a4a, 1.1)); const d = new THREE.DirectionalLight(0xffffff, .9); d.position.set(1, 2, 1.5); TR.sc.add(d); }
+    const m = pieceMesh(pc), g = new THREE.Group(); g.add(m); if (pc.type === 'slab') g.rotation.x = -.9; const bb = new THREE.Box3().setFromObject(g), sz = bb.getSize(V3(0, 0, 0)), ct = bb.getCenter(V3(0, 0, 0)); g.position.sub(ct); const s = 1 / Math.max(sz.x, sz.y, sz.z, .001); g.scale.multiplyScalar(s); g.position.multiplyScalar(s); TR.sc.add(g);
+    TR.cam.position.set(0, .7, 2.2); TR.cam.lookAt(0, 0, 0); TR.r.render(TR.sc, TR.cam); const url = TR.c.toDataURL('image/png'); TR.sc.remove(g); g.traverse(x => x.geometry && x.geometry.dispose()); return url; } catch (e) { return ''; } }
+  const SAY = pc => { const n = pc.name || ''; const L = ['불이 좋아했나 봐요. 표정이 편해요.', '이 굽 좀 보세요. 손이 정직해요.', '재가 내려앉은 자리, 이게 장작가마 맛이에요.', '삐뚤어도 괜찮아요. 가마가 봐줬어요.', '같은 유약인데 이건 이 자리에서만 나와요.', '차 한 잔 담아 보고 싶네요.', '이건 제 선반에 두고 싶은데요. 안 되죠?', '불을 무서워하지 않은 그릇이에요.'];
+    if (pc.yo && pc.yo.ash > .65) return '윗칸에서 재를 잔뜩 맞았네요. 초록 방울이 보석 같아요.'; if (pc.yo && pc.yo.flash > .7) return '불길이 한쪽 볼에 입 맞추고 갔어요.'; if (pc.type === 'mini') return '작은 것도 불은 공평하게 구워요. 귀엽다…'; if (/버섯/.test(n)) return '가마에서 버섯이 자랐어요. 진짜예요.'; return pick(L); };
+  // 의식
+  const st = document.createElement('style'); st.textContent = `#kopen{position:fixed;inset:0;z-index:65;background:radial-gradient(ellipse at 50% 0%,#78321a,#1e1410 70%);color:#f6efe4;display:flex;flex-direction:column;align-items:center;font-family:"Gowun Dodum",sans-serif;padding:max(14px,env(safe-area-inset-top)) 12px max(14px,env(safe-area-inset-bottom));overflow:auto}
+#kopen h2{font-family:"Gowun Batang",serif;font-size:26px;margin:22px 0 4px;text-align:center}#kopen .sub{font-size:13.5px;color:#e4cfb6;text-align:center;max-width:34ch;line-height:1.5}
+#kopen .x{position:fixed;top:max(14px,env(safe-area-inset-top));right:14px;border:0;border-radius:18px;height:36px;padding:0 14px;background:rgba(255,255,255,.9);font:inherit;font-size:14px;color:#2d2924;z-index:2}
+#kopen .door{width:min(78vw,300px);height:150px;margin:18px auto 6px;border-radius:150px 150px 10px 10px;background:linear-gradient(#8a4a2c,#5a2e1c);position:relative;overflow:hidden;box-shadow:inset 0 0 40px rgba(0,0,0,.5)}
+#kopen .door i{position:absolute;inset:14px 14px 0;border-radius:140px 140px 4px 4px;background:radial-gradient(ellipse at 50% 80%,#ffd27a,#ff7a2a 45%,#6a1c0a 90%);transform-origin:bottom;transition:transform 1.6s ease,opacity 1.6s}#kopen.lit .door i{transform:scaleY(1.04)}
+#kopen .door b{position:absolute;inset:14px 14px 0;border-radius:140px 140px 4px 4px;background:repeating-linear-gradient(0deg,#9a5a3a 0 18px,#7a3e26 18px 20px);transition:transform 1.8s ease}#kopen.lit .door b{transform:translateY(105%)}
+#kopen .grid{width:min(680px,100%);display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin:16px 0 10px}
+#kopen .card{background:rgba(255,248,238,.96);color:#2d2924;border-radius:16px;padding:8px 8px 10px;display:flex;flex-direction:column;gap:4px;opacity:0;transform:translateY(14px) scale(.96);transition:opacity .6s,transform .6s}#kopen .card.in{opacity:1;transform:none}#kopen .card.mine{box-shadow:0 0 0 3px #e8c06a}
+#kopen .card img{width:100%;aspect-ratio:1;object-fit:contain;background:radial-gradient(#fff,#efe6d8);border-radius:10px}
+#kopen .card .n{font-family:"Gowun Batang",serif;font-weight:700;font-size:15px}#kopen .card .by{font-size:12px;color:#7a6e62}#kopen .card .yo{font-size:12px;color:#8a6a1f;line-height:1.4}#kopen .card .say{font-size:12.5px;color:#4a423a;line-height:1.45}
+#kopen .card button{align-self:flex-start;border:0;border-radius:14px;height:32px;padding:0 12px;background:#efe6d8;font:inherit;font-size:13px;color:#2d2924}#kopen .card button.on{background:#2d2924;color:#fff}
+#kopen .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:6px 0 18px}#kopen .row button{border:0;border-radius:20px;height:42px;padding:0 18px;font:inherit;font-size:15px;background:#f6efe4;color:#2d2924}#kopen .row button.sub2{background:rgba(255,255,255,.14);color:#f6efe4}`;
+  document.head.append(st);
+  o.ceremony = async () => {
+    if (document.getElementById('kopen')) return; try { closeSheet(); } catch (e) {}
+    const w = el('div'); w.id = 'kopen'; const x = el('button', 'x'); x.type = 'button'; x.textContent = '닫기'; x.onclick = () => w.remove();
+    const d = new Date(); w.append(x, Object.assign(el('h2'), { textContent: `${d.getMonth() + 1}월 가마 여는 날` }), Object.assign(el('div', 'sub'), { textContent: '자판기: “자, 엽니다! 문 앞에서 한 걸음 물러나세요. 뜨거워요.”' }));
+    const door = el('div', 'door'); door.innerHTML = '<i></i><b></b>'; w.append(door); const grid = el('div', 'grid'), row = el('div', 'row'); w.append(grid, row); document.body.append(w);
+    if (AU && AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t + .2, 'lowpass', 500, .7, .12 * MIX.fire, .05, 1.4, .5); for (let i = 0; i < 6; i++) tone(t + 1 + i * .12, rand(1800, 3200), .02 * MIX.amb, .001, .2, 'sine', .4); }
+    setTimeout(() => w.classList.add('lit'), 500);
+    const L = await load(); const sub = w.querySelector('.sub');
+    if (!L.length) { sub.textContent = '이번 가마엔 아직 아무것도 없어요. 다음 가마엔 꼭 하나 넣어 주세요!'; return; }
+    sub.textContent = `이번 가마에서 ${L.length}점이 나와요. 하나씩 꺼낼게요.`;
+    L.forEach((it, i) => setTimeout(() => {
+      const pc = it.pc, mine = it.uid === o.me || (preview && it.uid === 'me'), c = el('div', 'card' + (mine ? ' mine' : '')); const im = el('img'); im.alt = pc.name || '작품'; im.src = thumb(pc);
+      const nm = el('div', 'n'); nm.textContent = pc.name || (pc.type === 'mini' ? '작은 것' : pc.type === 'slab' ? '판 작품' : '물레 그릇'); const by = el('div', 'by'); by.textContent = (mine ? '내 작품 · ' : '') + it.nick; const yo = el('div', 'yo'); yo.textContent = yoDesc(pc.yo); const sy = el('div', 'say'); sy.textContent = '자판기: ' + SAY(pc);
+      const cb = el('button'); cb.type = 'button'; const n0 = (o.cups[it.id] || 0); const had = !!(o.mineCup && o.mineCup[it.id]); cb.textContent = `☕ 찻잔 ${n0}`; if (had) cb.classList.add('on');
+      cb.onclick = async () => { if (cb.classList.contains('on')) return; cb.classList.add('on'); o.cups[it.id] = (o.cups[it.id] || 0) + 1; cb.textContent = `☕ 찻잔 ${o.cups[it.id]}`; if (AU && AU.ctx) tone(AU.ctx.currentTime, 1760, .03 * MIX.amb, .002, .3, 'sine', .4); if (!preview && o.db && o.me) try { await o.db.doc(`${CUP}/${it.id}__${o.me}`).set({ c: 1 }); } catch (e) {} };
+      c.append(im, nm, by, yo, sy, cb); grid.append(c); requestAnimationFrame(() => c.classList.add('in'));
+      if (AU && AU.ctx) tone(AU.ctx.currentTime, rand(1900, 2600), .03 * MIX.amb, .001, .25, 'sine', .4);
+      if (mine) { const key = 'kopen_moved_' + it.id; if (!store.get(key, false)) { store.set(key, true); const out = Object.assign({}, pc); out.by = it.nick; addToShelf(out); } }
+      if (i === L.length - 1) setTimeout(() => { sub.textContent = '다 꺼냈어요! 내 작품은 선반에 올려 뒀어요. 마음에 드는 그릇엔 찻잔을 놓아 주세요.'; row.append(btn('찻자리로 가서 차 한 잔', () => { w.remove(); go('tea'); try { teacherSay(pick(['다들 수고했어요. 오늘 차는 제가 낼게요.', '가마 연 날 마시는 차가 제일 맛있어요.']), 5); } catch (e) {} }), btn('선반 보기', () => { w.remove(); go('shelf'); }, 'sub2')); }, 900);
+    }, 2200 + i * 700));
+  };
+  // 안내 / 실시간 열기
+  o.announce = () => { if (o.waiting()) { toast(`🔥 ${whenText()} 가마 여는 날! 지금 가마에 넣는 작품은 가마 속에서 기다렸다가 다 같이 꺼내요.`, '가마로', () => go('kiln'), 9); try { teacherSay('내일은 가마 여는 날이에요. 넣을 거 있으면 오늘 넣어요.', 5); } catch (e) {} } else { toast('🔥 가마가 열렸어요! 이번 가마 작품을 다 같이 구경해요.', '가마 열기 보기', () => o.ceremony(), 10); } };
+  $('#enter').addEventListener('click', () => setTimeout(o.announce, 7000));
+  let was = o.opened(); setInterval(() => { const now = o.opened(); if (!was && now && S.mode !== 'title') { toast('🔥 지금 가마를 엽니다! 다 같이 봐요.', '보러 가기', () => o.ceremony(), 15); try { teacherSay('자, 엽니다! 다들 모이세요!', 6); } catch (e) {} } was = now; }, 5000);
+  return o;
+})();
+if (KOPEN.on) {
+  { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln' || S.station === 'board') ui.acts.append(btn(KOPEN.opened() ? '이번 가마 보기' : '가마 여는 날 안내', () => KOPEN.opened() ? KOPEN.ceremony() : KOPEN.announce())); }; }
+  { const oa = openAdmin; openAdmin = function () { const r = oa.apply(this, arguments); try { if (!BOARD.admin) return r; const box = document.querySelector('#admin .box') || (typeof ad !== 'undefined' && ad.querySelector('.box')); if (!box) return r; const sec = el('div', 'sec'); sec.append(el('h3', null, '가마 여는 날')); const p = el('p'); p.style.cssText = 'font-size:12.5px;color:var(--ink-2);margin:2px 0 8px'; p.textContent = KOPEN.opened() ? '가마가 열렸어요.' : '예정: 11/16 저녁 8시. 지금 바로 열 수도 있어요.'; sec.append(p); if (!KOPEN.opened()) sec.append(btn('지금 가마 열기', async () => { try { await KOPEN.db.doc('kilnopen/2611').set({ at: Date.now() }); KOPEN.adminOpen = Date.now(); toast('가마를 열었어요!'); } catch (e) { toast('열지 못했어요.'); } }, 'chip on')); box.insertBefore(sec, box.children[2] || null); } catch (e) {} return r; }; }
+}
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
