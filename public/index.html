@@ -2918,7 +2918,7 @@ function kmaApply(d) {
 }
 function kmaText() { if (!kmaFresh()) return ''; return `대구 ${KMA.temp != null ? KMA.temp + '℃ ' : ''}${KMA.pty === 'none' ? KMA.sky : { rain: '비', shower: '소나기', sleet: '진눈깨비', snow: '눈' }[KMA.pty]}${KMA.wind != null ? ' · 바람 ' + KMA.wind + 'm/s' : ''}`; }
 function kmaLine() { if (!kmaFresh()) return '대구 날씨를 아직 받지 못했어요. 그동안은 가끔 비가 와요.'; const d = new Date(KMA.at); return `${kmaText()} · ${KMA.src === 'open-meteo' ? '실시간' : '기상청'} ${d.getHours()}시 기준`; }
-function updatePlaceChip() { updatePlaceChip_old(); const t = kmaText(); if (t) { const s = el('small'); s.textContent = ' · ' + t; ui.place.append(s); } }
+function updatePlaceChip() { updatePlaceChip_old(); const t = kmaFresh() ? `${KMA.temp != null ? KMA.temp + '℃ ' : ''}${KMA.pty === 'none' ? KMA.sky : { rain: '비', shower: '소나기', sleet: '진눈깨비', snow: '눈' }[KMA.pty] || ''}`.trim() : ''; if (t) { const s = el('small'); s.textContent = ' · ' + t; ui.place.append(s); } }
 (async () => {
   try {
     if (!window.claude || !window.claude.use) return;
