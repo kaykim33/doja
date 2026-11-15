@@ -6849,26 +6849,7 @@ const GUARD = (() => {
 doyaTap('guard', () => GUARD.open());
 { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'kiln') ui.acts.append(btn('수호상 세우기', () => GUARD.open())); }; }
 
-/* ── 6. 마당에 내 작품 놓기 ── */
-const YARD = (() => {
-  const P = { x: .9, z: -10.9 }; const g = new THREE.Group(); g.position.set(P.x, 0, P.z); scene.add(g);
-  const wood = std('#8b6a48', .8); mesh(rbox(1.9, .06, 1.1, .02), wood, 0, .32, 0, g); [[-.85, -.45], [.85, -.45], [-.85, .45], [.85, .45]].forEach(([x, z]) => mesh(new THREE.BoxGeometry(.07, .3, .07), std('#6a4c32', .8), x, .15, z, g)); for (let i = 0; i < 7; i++) mesh(new THREE.BoxGeometry(.004, .005, 1.08), std('#6a4c32', .9), -.81 + i * .27, .353, 0, g, false);
-  const holder = new THREE.Group(); holder.position.y = .35; g.add(holder); doyaHit(2, .7, 1.2, 0, .35, 0, { act: 'yard' }, g);
-  const SL = 12, slot = i => V3(-.75 + (i % 6) * .3, 0, -.25 + Math.floor(i / 6) * .5);
-  const o = { docs: [] };
-  async function load() { const { db, id } = await doyaApi(); if (!db) return; o.id = id; try { const qs = await db.collection('yard').get(); o.docs = qs.docs.map(d => Object.assign({ id: d.id }, d.data() || {})); render(); } catch (e) {} }
-  function render() { while (holder.children.length) { const c = holder.children.pop(); c.traverse(x => x.geometry && x.geometry.dispose()); } const used = new Set(); let k = 0;
-    o.docs.forEach(d => (Array.isArray(d.g) ? d.g : []).slice(0, 3).forEach(gid => { const pc = (GAL.list || []).find(x => x._id === gid); if (!pc || k >= SL) return; try { const m = pieceMesh(pc), bb = new THREE.Box3().setFromObject(m), h = bb.max.y - bb.min.y, sc = Math.min(.28 / Math.max(h, .01), .26 / Math.max(bb.max.x - bb.min.x, .01)); m.scale.multiplyScalar(sc); const p = slot(k++); m.position.set(p.x, -bb.min.y * sc, p.z); m.rotation.y = rand(-.4, .4); holder.add(m); } catch (e) {} })); }
-  o.open = async () => { await load(); const mine = (GAL.list || []).filter(x => x.by === S.nick).slice(0, 18); const myDoc = o.docs.find(d => d.id === o.id); let sel = new Set(myDoc && Array.isArray(myDoc.g) ? myDoc.g : []);
-    const grid = el('div'); grid.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px;max-height:40vh;overflow:auto';
-    if (!mine.length) grid.textContent = '내 이름으로 선반에 올린 작품이 아직 없어요.';
-    mine.forEach(pc => { const b = btn(pc.name || (pc.type === 'mini' ? '작은 것' : pc.type === 'slab' ? '판 작품' : '물레 그릇'), () => { if (sel.has(pc._id)) sel.delete(pc._id); else { if (sel.size >= 3) { toast('마당에는 세 점까지 놓을 수 있어요.'); return; } sel.add(pc._id); } b.classList.toggle('on', sel.has(pc._id)); }); if (sel.has(pc._id)) b.classList.add('on'); grid.append(b); });
-    sheet('마당 평상', '내 작품을 세 점까지 골라 마당 평상에 내놓아요. 지나가는 사람들이 구경해요. 비 와도 망가지지 않아요.', [grid], [btn('내놓기', async () => { closeSheet(); const { db, id } = await doyaApi(); if (!db || !id) return; try { await db.doc('yard/' + id).set({ g: [...sel].slice(0, 3), nick: String(S.nick || '손님').slice(0, 12) }); } catch (e) {} await load(); SFX.thud(); toast('마당 평상에 내놨어요.', null, null, 3); }, 'chip on'), btn('닫기', closeSheet)]); };
-  load(); setInterval(load, 120000); setTimeout(render, 8000);
-  return o;
-})();
-doyaTap('yard', () => YARD.open());
-doyaZone(() => [{ id: 'yard', x: YARD && .9, z: -10.1, r: .6, text: '마당 평상 (작품 내놓기)', run: () => YARD.open() }, { id: 'guard', x: KILN.x + 1.3, z: KILN.z - .6, r: .35, text: '가마 수호상', run: () => GUARD.open() }]);
+doyaZone(() => [{ id: 'guard', x: KILN.x + 1.3, z: KILN.z - .6, r: .35, text: '가마 수호상', run: () => GUARD.open() }]);
 
 /* ── 실제 대구 바람·기온 ── */
 (() => {
