@@ -41,6 +41,7 @@ function canWrite(op, coll, id, admin, data) {
   if (top === 'kiln2611' && coll === top) { const d = data || {}; return op === 'add' && JSON.stringify(d).length <= 60000 && typeof d.d === 'string' && /^v_[a-z0-9]{6,40}$/.test(String(d.uid || '')); }
   if (top === 'kilncup2611' && coll === top) { const d = data || {}; return op === 'set' && /^[a-z0-9]{6,30}__v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 60; }
   if (top === 'gosa2611' && coll === top) { const d = data || {}; return op === 'set' && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 200 && Number.isInteger(d.bow) && d.bow >= 0 && d.bow <= 9999 && Number.isInteger(d.won) && d.won >= 0 && d.won <= 100000000; }
+  if (/^bday-(prev|[jk]\d{4})$/.test(top) && coll === top) { const d = data || {}; return op === 'add' && JSON.stringify(d).length <= 400 && typeof d.msg === 'string' && d.msg.length <= 100; }
   if (top === 'gosaw2611' && coll === top) { const d = data || {}; return op === 'add' && JSON.stringify(d).length <= 300 && typeof d.wish === 'string' && d.wish.length <= 60; }
   if (/^(ice|shard)-\d{4}w\d{1,2}$/.test(top) && coll === top) { const d = data || {}; return op === 'set' && /^v_[a-z0-9]{6,40}$/.test(id) && JSON.stringify(d).length <= 300 && Number.isInteger(d.h) && d.h >= 0 && d.h <= 500; }
   return false;
