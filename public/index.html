@@ -7309,6 +7309,15 @@ const BDAY = (() => {
   o.write = write; o.paper = paper; o.isStar = isStar;
   return o;
 })();
+/* 게시판 관리: 생일 롤링페이퍼 모아 보기·저장 */
+{ const oa = openAdmin; openAdmin = function () { const r = oa.apply(this, arguments); try { if (!BOARD.admin) return r; const box = document.querySelector('#admin .box') || (typeof ad !== 'undefined' && ad.querySelector('.box')); if (!box) return r;
+  const sec = el('div', 'sec'); sec.append(el('h3', null, '생일 롤링페이퍼')); const p = el('p'); p.style.cssText = 'font-size:12.5px;color:var(--ink-2);margin:2px 0 8px'; p.textContent = '열면 축하 카드를 보고 이미지·영상으로 저장할 수 있어요.'; sec.append(p);
+  const kst = new Date(Date.now() + 9 * 36e5), Y = kst.getUTCFullYear(), md = (kst.getUTCMonth() + 1) * 100 + kst.getUTCDate(), list = [];
+  for (let y = Y; y >= 2026; y--) { if (y < Y || md >= 1117) list.push(['j' + y, `자판기 ${y}`]); if (y >= 2027 && (y < Y || md >= 303)) list.push(['k' + y, `케희 ${y}`]); }
+  const row = el('div'); row.style.cssText = 'display:flex;flex-wrap:wrap;gap:6px'; sec.append(row);
+  list.forEach(([k, lab]) => { const b = btn(lab, () => window.open(location.pathname + '?paper=' + k, '_blank'), 'chip'); row.append(b); (async () => { try { const db = await window.claude.use('db'), qs = await db.collection('bday-' + k).get(); b.textContent = `${lab} · ${qs.docs.length}장`; } catch (e) {} })(); });
+  if (!list.length) row.append(el('p', null, '아직 모인 롤링페이퍼가 없어요.'));
+  box.insertBefore(sec, box.children[2] || null); } catch (e) {} return r; }; }
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
