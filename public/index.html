@@ -7318,6 +7318,51 @@ const BDAY = (() => {
   list.forEach(([k, lab]) => { const b = btn(lab, () => window.open(location.pathname + '?paper=' + k, '_blank'), 'chip'); row.append(b); (async () => { try { const db = await window.claude.use('db'), qs = await db.collection('bday-' + k).get(); b.textContent = `${lab} · ${qs.docs.length}장`; } catch (e) {} })(); });
   if (!list.length) row.append(el('p', null, '아직 모인 롤링페이퍼가 없어요.'));
   box.insertBefore(sec, box.children[2] || null); } catch (e) {} return r; }; }
+/* ── 사자자리 유성우: 11/14~21, 극대 11/17 밤~18 새벽 (대구 하늘 기준 복사점) ── */
+const METEOR = (() => {
+  const q = new URLSearchParams(location.search).get('day'), force = q === 'leonid';
+  const kstH = () => { const k = new Date(Date.now() + 9 * 36e5); return { md: (k.getUTCMonth() + 1) * 100 + k.getUTCDate(), h: k.getUTCHours() + k.getUTCMinutes() / 60 }; };
+  // 0: 없음, 1: 활동기, 2: 극대
+  const level = () => { if (force) return 2; const { md, h } = kstH(); if ((md === 1117 && h >= 17) || (md === 1118 && h < 7)) return 2; return md >= 1114 && md <= 1121 ? 1 : 0; };
+  if (!force && level() === 0) { const { md } = kstH(); if (md < 1110 || md > 1122) return { level }; }
+  const LAT = 35.87 * Math.PI / 180, rad = Math.PI / 180;
+  const lst = t => rad * (280.46061837 + 360.98564736629 * (t / 864e5 + 2440587.5 - 2451545) + 128.6);
+  const RA = 10.15 * 15 * rad, DEC = 22 * rad; // 사자자리 복사점
+  function radiant() { const H = lst(Date.now()) - RA, alt = Math.asin(Math.sin(LAT) * Math.sin(DEC) + Math.cos(LAT) * Math.cos(DEC) * Math.cos(H)), az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(LAT) - Math.tan(DEC) * Math.cos(LAT)); return { alt, az }; }
+  const dirU = (alt, az) => V3(Math.sin(az) * Math.cos(alt), Math.sin(alt), -Math.cos(az) * Math.cos(alt));
+  const R = 80, LIVE = [];
+  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+  function spawn(big) {
+    const rd = radiant(), r = dirU(Math.max(rd.alt, -.15), rd.az);
+    const south = Math.random() < .7, az = south ? rand(-1.3, 1.3) : rand(-Math.PI, Math.PI), alt = rand(.3, 1.15), p = dirU(alt, az);
+    let t = p.clone().sub(r.clone().multiplyScalar(p.dot(r))); if (t.lengthSq() < 1e-4) return; t.normalize();
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(12), 3));
+    const head = big ? [.75, 1, .9] : [1, .97, .9], tail = big ? [.1, .5, .4] : [.25, .3, .45], col = new Float32Array([...head, ...head, ...tail.map(v => v * 0), ...tail.map(v => v * 0)]);
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3)); g.setIndex([0, 1, 2, 1, 3, 2]);
+    const m = new THREE.Mesh(g, mat); m.frustumCulled = false; scene.add(m);
+    LIVE.push({ m, p, t, a: 0, len: big ? rand(.35, .55) : rand(.12, .3), dur: big ? rand(1.1, 1.6) : rand(.45, .9), w: big ? .55 : rand(.16, .28), big, head, tail });
+    if (big && AU && AU.ctx && WALK.z < -4.2) tone(AU.ctx.currentTime, 2400, .006 * MIX.amb, .2, 1.2, 'sine', .6, f => f.exponentialRampToValueAtTime(1500, AU.ctx.currentTime + 1.2));
+  }
+  const A = new THREE.Vector3(), B = new THREE.Vector3(), Cm = new THREE.Vector3(), side = new THREE.Vector3();
+  let last = performance.now(), nextT = 2, o = { level, wishes: +store.get('leonidWish', 0) || 0, seen: 0 };
+  requestAnimationFrame(function tk(now) { requestAnimationFrame(tk); const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const lv = level(), night = typeof LIGHT !== 'undefined' ? LIGHT.night || 0 : 1, cloud = typeof WTH !== 'undefined' ? Math.max(WTH.rain || 0, (WTH.cloud || 0) * .7) : 0;
+    if (lv && night > .35 && cloud < .8 && !document.hidden) { nextT -= dt; if (nextT <= 0) { const rd = radiant(), up = rd.alt > 0 ? 1 : .35; const big = Math.random() < (lv === 2 ? .12 : .05); spawn(big); o.seen++; if (big) fireball(); if (lv === 2 && Math.random() < .25) setTimeout(() => spawn(false), rand(150, 500)); nextT = (lv === 2 ? rand(.5, 2.2) : rand(12, 35)) / up; } }
+    for (let i = LIVE.length - 1; i >= 0; i--) { const s = LIVE[i]; s.a += dt / s.dur; const k = s.a, hs = s.len * Math.min(1, k * 1.15), ts = Math.max(0, hs - s.len * .55 * (1 + k)), fade = k < .15 ? k / .15 : k > .7 ? Math.max(0, (1 - k) / .3) : 1;
+      A.copy(s.p).addScaledVector(s.t, hs).normalize().multiplyScalar(R); B.copy(s.p).addScaledVector(s.t, ts).normalize().multiplyScalar(R);
+      Cm.copy(A).sub(camera.position); side.copy(A).sub(B).cross(Cm).normalize().multiplyScalar(s.w * (s.big ? 1 : .8));
+      const P = s.m.geometry.attributes.position.array; P.set([A.x + side.x, A.y + side.y, A.z + side.z, A.x - side.x, A.y - side.y, A.z - side.z, B.x + side.x * .2, B.y + side.y * .2, B.z + side.z * .2, B.x - side.x * .2, B.y - side.y * .2, B.z - side.z * .2]); s.m.geometry.attributes.position.needsUpdate = true;
+      const Cc = s.m.geometry.attributes.color.array, f = fade * Math.min(1, night * 1.4); for (let j = 0; j < 3; j++) { Cc[j] = Cc[3 + j] = s.head[j] * f; Cc[6 + j] = Cc[9 + j] = s.tail[j] * f * .25; } s.m.geometry.attributes.color.needsUpdate = true;
+      if (k >= 1) { scene.remove(s.m); s.m.geometry.dispose(); LIVE.splice(i, 1); } }
+  });
+  o.spawn = spawn;
+  let fbT = 0;
+  function fireball() { if (S.mode === 'title' || Date.now() - fbT < 25000) return; fbT = Date.now();
+    toast('🌠 큰 별똥별이 지나갔어요! 소원 빌래요?', '소원 빌기', () => { o.wishes++; store.set('leonidWish', o.wishes); SFX.ding(); try { teacherSay(pick(['빌었어요? 말하면 안 이뤄진대요. 가마 소원이랑 같아요.', `오늘 ${o.wishes}번째 소원이네요. 하나쯤은 이뤄지겠죠.`, '유성흔이 청록색이죠? 구리 유약 같아요.', '저도 빌었어요. 내년 가마도 잘 나오게.']), 5); } catch (e) {} }, 7); }
+  // 입장 안내
+  $('#enter').addEventListener('click', () => { const lv = level(); if (!lv) return; setTimeout(function nt() { if (document.querySelector('.bdinv')) return setTimeout(nt, 6000); const night = (LIGHT.night || 0) > .35; toast(lv === 2 ? (night ? '🌠 지금 사자자리 유성우 극대예요! 정원에 나가 하늘을 올려다봐요.' : '🌠 오늘 밤~내일 새벽, 사자자리 유성우 극대! 밤에 공방 하늘에도 쏟아져요.') : '🌠 사자자리 유성우 기간이에요. 밤하늘에 가끔 별똥별이 지나가요.', night ? '하늘 보기' : null, night ? () => { try { WALK.goal = { x: .8, z: -8.5 }; markGoal(.8, -8.5); } catch (e) {} } : null, 9); }, 12000); });
+  return o;
+})();
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
