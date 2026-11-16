@@ -7202,11 +7202,13 @@ const SKYLOOK = (() => {
 
 /* ── 생일 롤링페이퍼: 축하 한마디 남기기, 주인공 입장 때 축하 ── */
 const BDAY = (() => {
-  if (!(DAYS.jbday || DAYS.kbday)) return null;
-  const J = DAYS.jbday, who = J ? '자판기' : '케희';
+  const PQ = ((new URLSearchParams(location.search).get('paper') || '').match(/^[jk]\d{4}$|^prev$/) || [])[0]; // ?paper=j2026 : 지난 롤링페이퍼 보기·저장
+  if (!(DAYS.jbday || DAYS.kbday) && !PQ) return null;
+  const J = PQ ? PQ[0] !== 'k' : DAYS.jbday, who = J ? '자판기' : '케희';
   const prev = !!new URLSearchParams(location.search).get('day');
   const yr = new Date(Date.now() + 9 * 36e5).getUTCFullYear();
-  const COL = prev ? 'bday-prev' : `bday-${J ? 'j' : 'k'}${yr}`;
+  const COL = PQ ? 'bday-' + PQ : prev ? 'bday-prev' : `bday-${J ? 'j' : 'k'}${yr}`;
+  const DLAB = PQ && PQ !== 'prev' ? `${PQ.slice(1)}.${J ? '11.17' : '3.3'}` : `${yr}.${J ? '11.17' : '3.3'}`;
   const NAMES = J ? ['자판기', '자판기쌤', '자판기선생님'] : ['케희', '케이', 'kay', 'kaykim'];
   const norm = s => String(s || '').toLowerCase().replace(/[\s님쌤!~.]/g, '');
   const isStar = n => { const v = norm(n); return !!v && NAMES.some(x => v === norm(x) || (J && v.includes('자판기'))); };
@@ -7243,14 +7245,42 @@ const BDAY = (() => {
   // 카드 하나
   function card(x, i) { const c = el('div', 'bdc'); c.style.background = COLORS[(+x.c || 0) % COLORS.length]; c.style.setProperty('--r', ((i * 37 % 7) - 3) * .8 + 'deg'); const p = el('p'); p.textContent = x.msg; const n = el('span'); n.textContent = '— ' + (x.nick || '손님'); c.append(p, n); return c; }
   // 롤링페이퍼 (celebrate: 주인공 축하 연출)
+  // ---- 카드로 내보내기 (1080×1920 이미지 / 영상) ----
+  function wrapT(g, t, w) { const out = []; String(t).split('\n').forEach(par => { let ln = ''; for (const ch of par) { if (g.measureText(ln + ch).width > w && ln) { out.push(ln); ln = ch.trim() ? ch : ''; } else ln += ch; } out.push(ln); }); return out; }
+  function layout(L) { const W = 1080, g = document.createElement('canvas').getContext('2d'), cw = 438, pad = 34; g.font = '34px "Gowun Dodum", sans-serif'; let cols = [520, 520]; const cards = L.map((x, i) => { const lines = wrapT(g, x.msg, cw - pad * 2), h = pad * 2 + lines.length * 50 + 44, c = cols[0] <= cols[1] ? 0 : 1, y = cols[c]; cols[c] += h + 34; return { x: 72 + c * (cw + 60), y, w: cw, h, lines, nick: x.nick || '손님', col: COLORS[(+x.c || 0) % COLORS.length], r: ((i * 37 % 7) - 3) * .012 }; }); const H = Math.max(1920, Math.max(...cols) + 260); return { W, H, cards }; }
+  const DOTS = Array.from({ length: 70 }, (_, i) => ({ x: Math.random(), y: Math.random(), c: ['#e8a3ad', '#e2b53b', '#7fb3d5', '#9cc89a', '#c9a6ea', '#f2a46b'][i % 6], r: Math.random() * 6, s: 6 + Math.random() * 8 }));
+  function paint(g, Lo, t, anim) { const { W, H, cards } = Lo; g.fillStyle = '#f6efe4'; g.fillRect(0, 0, W, H);
+    DOTS.forEach(d => { const y = anim ? ((d.y * H + t * (60 + d.s * 8)) % (H + 40)) - 20 : d.y * H; g.save(); g.translate(d.x * W, y); g.rotate(d.r + (anim ? t * 2 : 0)); g.fillStyle = d.c; g.globalAlpha = .55; g.fillRect(-d.s / 2, -d.s / 4, d.s, d.s / 2); g.restore(); }); g.globalAlpha = 1;
+    const ha = anim ? clamp(t / .8, 0, 1) : 1; g.save(); g.globalAlpha = ha; g.textAlign = 'center'; g.fillStyle = '#b0546a'; g.font = '700 40px "Gowun Batang", serif'; g.fillText('HAPPY BIRTHDAY', W / 2, 200); g.fillStyle = '#2d2924'; g.font = '700 88px "Gowun Batang", serif'; g.fillText(`생일 축하해요, ${who}`, W / 2, 320); g.fillStyle = '#6b625a'; g.font = '32px "Gowun Dodum", sans-serif'; g.fillText(`${DLAB} · 도자의 숲 손님 ${cards.length}명이 남긴 마음`, W / 2, 400); g.restore();
+    cards.forEach((c, i) => { const k = anim ? clamp((t - 1.2 - i * .55) / .5, 0, 1) : 1; if (k <= 0) return; const e = 1 - Math.pow(1 - k, 3); g.save(); g.globalAlpha = k; g.translate(c.x + c.w / 2, c.y + c.h / 2 + (1 - e) * 40); g.rotate(c.r); g.scale(.9 + .1 * e, .9 + .1 * e); g.translate(-c.w / 2, -c.h / 2);
+      g.shadowColor = 'rgba(60,40,30,.18)'; g.shadowBlur = 24; g.shadowOffsetY = 10; g.fillStyle = c.col; g.beginPath(); g.roundRect ? g.roundRect(0, 0, c.w, c.h, 18) : g.rect(0, 0, c.w, c.h); g.fill(); g.shadowColor = 'transparent';
+      g.fillStyle = 'rgba(255,255,255,.55)'; g.fillRect(c.w / 2 - 50, -12, 100, 26);
+      g.fillStyle = '#2d2924'; g.font = '34px "Gowun Dodum", sans-serif'; g.textAlign = 'left'; c.lines.forEach((ln, j) => g.fillText(ln, 34, 34 + 36 + j * 50)); g.fillStyle = '#6b625a'; g.font = '26px "Gowun Dodum", sans-serif'; g.textAlign = 'right'; g.fillText('— ' + c.nick, c.w - 34, c.h - 30); g.restore(); });
+    g.textAlign = 'center'; g.fillStyle = '#8a7f73'; g.font = '700 30px "Gowun Batang", serif'; g.fillText('超SOYOHO · doja.pages.dev', W / 2, H - 110); }
+  function dl(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+  async function saveImg(L, b) { try { await document.fonts.ready; } catch (e) {} const Lo = layout(L), cv = document.createElement('canvas'); cv.width = Lo.W; cv.height = Lo.H; paint(cv.getContext('2d'), Lo, 0, false); cv.toBlob(bl => { if (bl) { dl(bl, `${who}-생일-롤링페이퍼.png`); b.textContent = '✓ 저장했어요'; } }, 'image/png'); }
+  async function saveVid(L, b) {
+    if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) { toast('이 브라우저는 영상 저장이 안 돼요. 이미지로 저장해 주세요.', null, null, 5); return; }
+    if (b.disabled) return; b.disabled = true; try { await document.fonts.ready; } catch (e) {}
+    const L2 = L.slice(0, 20), Lo = layout(L2); Lo.H = 1920; // 영상은 한 화면(카드가 많으면 앞 20개, 넘치면 위로 흘러가요)
+    const full = layout(L2), cv = document.createElement('canvas'); cv.width = 1080; cv.height = 1920; const g = cv.getContext('2d'), big = document.createElement('canvas'); big.width = 1080; big.height = full.H; const bg2 = big.getContext('2d');
+    const dur = Math.max(9, 1.2 + L2.length * .55 + 3 + Math.max(0, full.H - 1920) / 200);
+    const types = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9', 'video/webm'], mt = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+    const vs = cv.captureStream(30); let ac = null; try { ac = new (window.AudioContext || window.webkitAudioContext)(); const dst = ac.createMediaStreamDestination(); const N = { G: 392, A: 440, B: 494, C: 523, D: 587, E: 659, F: 698, g: 784 }; let tt = ac.currentTime + .6; 'G.5 G.5 A1 G1 C1 B2 G.5 G.5 A1 G1 D1 C2 G.5 G.5 g1 E1 C1 B1 A2 F.5 F.5 E1 C1 D1 C2'.split(' ').forEach(n => { const d = parseFloat(n.slice(1)) * .4, o = ac.createOscillator(), v = ac.createGain(); o.type = 'triangle'; o.frequency.value = N[n[0]]; v.gain.setValueAtTime(0, tt); v.gain.linearRampToValueAtTime(.18, tt + .02); v.gain.exponentialRampToValueAtTime(.001, tt + d * .95); o.connect(v).connect(dst); o.start(tt); o.stop(tt + d); tt += d; }); dst.stream.getAudioTracks().forEach(tr => vs.addTrack(tr)); } catch (e) {}
+    const rec = new MediaRecorder(vs, mt ? { mimeType: mt, videoBitsPerSecond: 6e6 } : undefined), chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    rec.onstop = () => { try { ac && ac.close(); } catch (e) {} const ext = (rec.mimeType || mt).includes('mp4') ? 'mp4' : 'webm'; dl(new Blob(chunks, { type: rec.mimeType || mt || 'video/webm' }), `${who}-생일-롤링페이퍼.${ext}`); b.disabled = false; b.textContent = '✓ 영상 저장했어요'; };
+    rec.start(250); const t0 = performance.now();
+    (function fr() { const t = (performance.now() - t0) / 1000; paint(bg2, full, t, true); const sc = clamp((t - (1.2 + L2.length * .55)) / Math.max(1, dur - 4 - L2.length * .55), 0, 1) * Math.max(0, full.H - 1920); g.drawImage(big, 0, sc, 1080, 1920, 0, 0, 1080, 1920); b.textContent = `🎬 녹화 중… ${Math.min(100, Math.round(t / dur * 100))}%`; if (t < dur) requestAnimationFrame(fr); else rec.stop(); })();
+  }
   async function paper(celebrate) {
     const z = zoomBox(); z.classList.add('bdz');
     const h = el('h2', 'bdh'); h.textContent = celebrate ? '생일 축하합니다!' : `${who}에게 남긴 축하`; z.append(h);
     const sub = el('div', 'bds'); sub.textContent = celebrate ? `${S.nick || who}님, 오늘 공방 손님들이 남긴 마음이에요` : '불러오는 중…'; z.append(sub);
     const wall = el('div', 'bdw'); z.append(wall);
-    const ft = el('div', 'bdf'); const wb = el('button'); wb.type = 'button'; wb.className = 'chip on'; wb.textContent = '✏️ 나도 한마디'; wb.onclick = () => { z.remove(); write(); }; if (!celebrate) ft.append(wb); z.append(ft);
+    const ft = el('div', 'bdf'); const wb = el('button'); wb.type = 'button'; wb.className = 'chip on'; wb.textContent = '✏️ 나도 한마디'; wb.onclick = () => { z.remove(); write(); }; if (!celebrate && !PQ) ft.append(wb); z.append(ft);
     if (celebrate) confetti(z);
     const L = await load();
+    if (L.length) { const ib = el('button'); ib.type = 'button'; ib.className = 'chip'; ib.textContent = '🖼 이미지로 저장'; ib.onclick = () => saveImg(L, ib); const vb = el('button'); vb.type = 'button'; vb.className = 'chip'; vb.textContent = '🎬 영상으로 저장'; vb.onclick = () => saveVid(L, vb); ft.append(ib, vb); }
     if (!celebrate) sub.textContent = L.length ? `${L.length}개의 축하가 모였어요` : `아직 아무도 안 썼어요. 첫 번째로 남겨 주세요!`;
     else if (!L.length) sub.textContent = `${S.nick || who}님, 오늘 와 주셔서 고마워요. 축하는 이제 곧 쌓일 거예요!`;
     L.forEach((x, i) => { const c = card(x, i); if (celebrate) { c.style.opacity = 0; c.style.transform = 'translateY(16px) scale(.9) rotate(var(--r))'; setTimeout(() => { c.style.opacity = 1; c.style.transform = ''; if (AU.ctx) tone(AU.ctx.currentTime, 1320 + (i % 5) * 110, .03 * MIX.amb, .002, .18, 'sine', .3); }, 1800 + i * 650); } wall.append(c); });
@@ -7268,6 +7298,7 @@ const BDAY = (() => {
   o.celebrate = () => { song(); paper(true); setTimeout(() => { try { teacherSay(J ? '어? 저랑 이름이 같은 분이… 아, 오늘 주인공이시구나. 생일 축하해요!' : `${S.nick}님, 생일 축하해요! 오늘은 흙도 말랑해요.`, 7); } catch (e) {} }, 2500); };
   // 입장
   $('#enter').addEventListener('click', () => {
+    if (PQ) { setTimeout(() => paper(false), 1500); return; }
     if (isStar(S.nick)) { setTimeout(o.celebrate, 2600); return; }
     if (!store.get('bdayw-' + COL)) setTimeout(() => { if (!document.querySelector('.miniM,.zoomV')) write(true); else setTimeout(() => write(true), 8000); }, 3500);
   });
