@@ -5327,14 +5327,40 @@ const DAYS = (() => {
       const FLY = [];
       setInterval(() => { if (document.hidden || FLY.length > 14) return; const g = balloon(rand(-6, 6), .4, rand(-14, -6), (Math.random() * 7) | 0, rand(.9, 1.3), .6, scene, false); FLY.push({ g, vy: rand(.5, .9), ph: rand(0, TAU) }); }, 2600);
       const FW = [], PTEX = canvasTex(32, 32, c => { const gr = c.createRadialGradient(16, 16, 0, 16, 16, 16); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.35, 'rgba(255,255,255,.6)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, 32, 32); });
-      function burst() { const N = 110, pos = new Float32Array(N * 3), vel = [], o = V3(rand(-16, 16), rand(13, 22), rand(-44, -30)), sp = rand(5, 8), two = Math.random() < .4;
+      // 불꽃 소리: 슝— 펑! 타닥타닥 (밖에선 크게, 안에선 창 너머로 먹먹하게)
+      function fwWhistle() { if (!AU || !AU.ctx || S.mode === 'title') return; const out = WALK.z < -4.2, t = AU.ctx.currentTime, k = (out ? 1 : .4) * MIX.amb; tone(t, rand(700, 1000), .012 * k, .08, .85, 'sine', .45, f => f.exponentialRampToValueAtTime(rand(1900, 2600), t + .85)); noiseHit(t, 'bandpass', 2400, 3, .01 * k, .05, .8, .3); }
+      function fwBoom() { if (!AU || !AU.ctx || S.mode === 'title') return; const out = WALK.z < -4.2, t = AU.ctx.currentTime + .25, k = (out ? 1 : .45) * MIX.amb;
+        noiseHit(t, 'lowpass', out ? 320 : 170, .8, .26 * k, .004, 1.3, .6); tone(t, 85, .16 * k, .004, .55, 'sine', .4, f => f.exponentialRampToValueAtTime(32, t + .55)); noiseHit(t, 'lowpass', 900, .6, .08 * k, .002, .12, .3);
+        if (out || Math.random() < .5) for (let i = 0; i < 14; i++) noiseHit(t + .35 + rand(0, 1.1), 'highpass', rand(2500, 5000), .7, rand(.012, .03) * k, .001, rand(.02, .06), .25); }
+      const burst = () => { fwWhistle(); setTimeout(burst0, 900); };
+      function burst0() { const N = 110, pos = new Float32Array(N * 3), vel = [], o = V3(rand(-16, 16), rand(13, 22), rand(-44, -30)), sp = rand(5, 8), two = Math.random() < .4;
         for (let i = 0; i < N; i++) { const u = rand(-1, 1), a = rand(0, TAU), s = Math.sqrt(1 - u * u), m = (two && i % 2 ? .55 : 1) * sp * rand(.92, 1.05); vel.push(V3(s * Math.cos(a) * m, u * m, s * Math.sin(a) * m)); pos.set([o.x, o.y, o.z], i * 3); }
         const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
         const mt = new THREE.PointsMaterial({ map: PTEX, color: C(pick(['#ffd27a', '#ff7a8a', '#8ec9ff', '#b6ff9e', '#e3a6ff', '#ffffff', '#ffb36b'])), size: 1.1, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
         const p = new THREE.Points(g, mt); scene.add(p); FW.push({ p, vel, t: 0 });
-        if (AU && AU.ctx && WALK.z < -4.2) noiseHit(AU.ctx.currentTime + .1, 'lowpass', 180, .7, .05 * MIX.amb, .005, .7, .15); }
+        fwBoom(); }
       setInterval(() => { const n = typeof LIGHT !== 'undefined' ? LIGHT.night || 0 : 1; if (document.hidden || n < .35) return; burst(); if (Math.random() < .35) setTimeout(burst, 350); }, 2200);
 
+      // ---- 김탄: 고깔모자·프릴 목도리·풍선, 자판기 생일엔 졸졸 따라다니기 ----
+      { const hat = new THREE.Group(); hat.position.set(.03, .11, -.01); hat.rotation.set(-.15, 0, -.25); dogHead.add(hat);
+        const hc = new THREE.Mesh(new THREE.ConeGeometry(.055, .14, 16), new THREE.MeshStandardMaterial({ roughness: .7, map: canvasTex(64, 64, (g, W, H) => { for (let i = 0; i < 8; i++) { g.fillStyle = PAL[i % 6]; g.fillRect(0, i * 8, W, 8); } g.fillStyle = '#fff'; for (let i = 0; i < 14; i++) { g.beginPath(); g.arc(rand(0, W), rand(0, H), 2.5, 0, TAU); g.fill(); } }) })); hc.position.y = .07; hat.add(hc);
+        mesh(new THREE.SphereGeometry(.022, 10, 8), FOIL, 0, .145, 0, hat, false);
+        for (let i = 0; i < 18; i++) { const a = i / 18 * TAU, f = mesh(new THREE.ConeGeometry(.026, .055, 6), PMAT[i % 6], Math.cos(a) * .1, .17 + Math.sin(a) * .07, .23, dog, false); f.rotation.set(0, 0, a - Math.PI / 2); f.scale.z = .5; }
+        const db = balloon(0, 0, 0, 0, 1.15, 0, scene, false), dl = new THREE.Line(new THREE.BufferGeometry().setFromPoints([V3(), V3()]), STR); scene.add(dl); const bp = V3(DOG.pos.x, 1, DOG.pos.z);
+        let chk = 0, fol = false;
+        const dt0 = dogTick; dogTick = function (dt, t) { dt0(dt, t);
+          // 풍선은 김탄 머리 위로 살짝 늦게 따라와요
+          const want = V3(dog.position.x - Math.sin(DOG.ry) * .25, dog.position.y + .95 + Math.sin(t * 1.3) * .04, dog.position.z - Math.cos(DOG.ry) * .25); bp.lerp(want, Math.min(1, dt * 2.5)); db.position.copy(bp); db.rotation.z = (want.x - bp.x) * 2; db.rotation.x = -(want.z - bp.z) * 2;
+          const A = dl.geometry.attributes.position.array; A.set([bp.x, bp.y, bp.z, dog.position.x, dog.position.y + .2, dog.position.z - .2]); dl.geometry.attributes.position.needsUpdate = true;
+          if (!DAYS.jbday) return;
+          chk -= dt; const free = !OUT.on && PET.belly <= 0 && (DOG.state === 'sleep' || DOG.state === 'flop' || (DOG.state === 'walk' && fol)) && !(typeof S.mode === 'string' && ['throw', 'trim', 'hand'].includes(S.mode) && DOG.atFeet);
+          if (!free) { fol = false; return; }
+          const tp = teacher.position, ry = teacher.rotation.y, spot = V3(tp.x + Math.sin(ry + 2.2) * .55, .08, tp.z + Math.cos(ry + 2.2) * .55);
+          if (fol) { DOG.target = spot; if (DOG.pos.distanceTo(spot) < .12) fol = false; return; }
+          if (chk > 0) return; chk = .6;
+          if (Math.hypot(DOG.pos.x - tp.x, DOG.pos.z - tp.z) > .95) { DOG.atFeet = false; DOG.target = spot; DOG.state = 'walk'; fol = true; if (Math.random() < .25) showBubble(dog, null, pick(['자판기 어디 가', '생일이라며!', '나도 케이크', '졸졸졸']), 2); }
+        }; }
+      if (DAYS.jbday) { const tt = teacherTick; teacherTick = function (dt, t) { if (TCH.walkT > 28) TCH.walkT = 28; return tt.apply(this, arguments); }; lines.push('오늘은 김탄이 저만 따라다녀요. 생일 선물인가 봐요.', '김탄 모자는 제가 씌웠어요. 본인은 모르는 것 같아요.'); }
       // 움직임
       let last = performance.now();
       requestAnimationFrame(function an(now) { requestAnimationFrame(an); const dt = Math.min(.05, (now - last) / 1000), t = now / 1000; last = now;
