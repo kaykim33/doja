@@ -5975,13 +5975,110 @@ const PIZZA = (() => {
   }
   return { open, get m() { return M; } };
 })();
+// ---------- 생일엔 물레 케이크 (케이크 돌림판 = 물레) ----------
+const CAKE = (() => {
+  const who = DAYS.jbday ? '자판기' : DAYS.kbday ? '케희' : '';
+  const TOP = [['딸기', '#d8343f', 'berry'], ['블루베리', '#3b4a8a', 'dot'], ['귤', '#f29a2e', 'slice'], ['초코', '#5a3624', 'cube'], ['곶감', '#c8642e', 'slice'], ['민트', '#4f9a45', 'leaf'], ['스프링클', 'multi', 'spr'], ['초', '#7fb3d5', 'candle'], ['이름판', '#4a2e22', 'plaque']];
+  const CREAM = [['생크림', '#fbf6ee'], ['딸기크림', '#f4b6c2'], ['초코크림', '#8a5a3c'], ['말차크림', '#b9cf8e']];
+  const SAY_IN = ['케이크 돌림판도 결국 물레예요. 손은 가만히, 판이 돌아요.', '아이싱은 중심 잡기랑 똑같아요. 손이 흔들리면 크림도 흔들려요.', `오늘 ${who} 생일이에요. 케이크는 많을수록 좋아요.`, '흙 대신 크림. 오늘만 봐 드려요.', '가마에는 안 넣어요. 녹아요.'];
+  const SPR = ['#e8a3ad', '#e2b53b', '#7fb3d5', '#9cc89a', '#c9a6ea'];
+  let M = null; const R = 118;
+  function open() {
+    if (M && !M.closed) return; try { closeSheet && closeSheet(); } catch (e) {}
+    M = MINI.make('cakeM', '물레 케이크'); M.bx.style.background = '#f3e6dc';
+    M.panel('물레로 만드는 생일 케이크', [[`자판기: “${esc(pick(SAY_IN))}”`, 'say q'], ['구운 시트를 물레에 얹었어요. 돌리면서 크림을 펴 바르고, 테두리를 짜고, 토핑을 올리고, 촛불을 불어요.'], [`지금까지 만든 케이크 ${MINI.count('soyoho_cake')}개`, 'say']], [['물레에 시트 얹기', start]]);
+    bg(M.g, M.W, M.H);
+  }
+  const C0 = () => ({ x: M.W / 2, y: M.H * .46 });
+  function bg(g, W, H) { g.fillStyle = '#e9d6c6'; g.fillRect(0, 0, W, H); g.fillStyle = 'rgba(255,255,255,.35)'; for (let y = 0; y < H; y += 28) for (let x = (y / 28 % 2) * 14; x < W; x += 28) g.fillRect(x, y, 14, 14);
+    const c = { x: W / 2, y: H * .46 }, rr = R * 1.32, rot = M.G ? M.G.rot : 0; g.fillStyle = 'rgba(0,0,0,.16)'; g.beginPath(); g.arc(c.x + 5, c.y + 9, rr, 0, TAU); g.fill();
+    const gr = g.createRadialGradient(c.x - rr * .3, c.y - rr * .3, 10, c.x, c.y, rr); gr.addColorStop(0, '#ffffff'); gr.addColorStop(1, '#e6e1da'); g.fillStyle = gr; g.beginPath(); g.arc(c.x, c.y, rr, 0, TAU); g.fill();
+    g.strokeStyle = 'rgba(120,150,190,.5)'; g.lineWidth = 3; g.beginPath(); g.arc(c.x, c.y, rr - 7, 0, TAU); g.stroke();
+    g.fillStyle = 'rgba(120,150,190,.45)'; for (let i = 0; i < 16; i++) { const a = rot + i / 16 * TAU; g.beginPath(); g.arc(c.x + Math.cos(a) * (rr - 7), c.y + Math.sin(a) * (rr - 7), 3, 0, TAU); g.fill(); } }
+  function start() {
+    const G = M.G = { phase: 'ice', cream: document.createElement('canvas'), rim: [], items: [], sel: null, col: 0, drag: null, ll: null, t: 0, rot: 0, w: 0, lit: false, cov: 0, covT: 0, smoke: [] };
+    G.cream.width = G.cream.height = 400; G.cg = G.cream.getContext('2d'); BOX3D.spin = true; M.onClose = () => { BOX3D.spin = false; };
+    phaseIce();
+    const cv = M.cv; cv.onpointerdown = e => { cv.setPointerCapture(e.pointerId); G.drag = M.pos(e); G.ll = null; if (G.phase === 'top') place(G.drag); };
+    cv.onpointermove = e => { if (G.drag) G.drag = M.pos(e); };
+    cv.onpointerup = cv.onpointercancel = () => { G.drag = null; G.ll = null; };
+    M.loop(dt => { step(dt); draw(); });
+  }
+  const toLocal = p => { const G = M.G, c = C0(), x = p.x - c.x, y = p.y - c.y, ca = Math.cos(-G.rot), sa = Math.sin(-G.rot); return { x: x * ca - y * sa, y: x * sa + y * ca }; };
+  function phaseIce() { const G = M.G; G.phase = 'ice'; M.tip.textContent = '물레가 돌아요. 시트 위를 누른 채 가운데서 바깥으로 천천히 옮기면 크림이 펴져요.'; M.buttons(CREAM.map((c, i) => [c[0], el => { G.col = i; [...M.bar.children].forEach(b => b.classList.toggle('on', b === el)); }]).concat([['다음: 테두리', phasePipe, 'main']])); M.bar.children[0].classList.add('on'); }
+  function phasePipe() { const G = M.G; G.phase = 'pipe'; M.tip.textContent = '짤주머니예요. 케이크 가장자리를 누르고 있으면 돌아가면서 몽글몽글 짜여요.'; M.buttons(CREAM.map((c, i) => [c[0], el => { G.col = i; [...M.bar.children].forEach(b => b.classList.toggle('on', b === el)); }]).concat([['다음: 토핑', phaseTop, 'main']])); M.bar.children[G.col].classList.add('on'); }
+  function phaseTop() { const G = M.G; G.phase = 'top'; M.tip.textContent = '물레를 멈췄어요. 토핑을 골라 케이크 위를 눌러요. 초도 꽂아요!'; const bs = TOP.map(t => [t[0], el => { G.sel = t; [...M.bar.children].forEach(b => b.classList.toggle('on', b === el)); }]); bs.push(['촛불 켜기', phaseBlow, 'main']); M.buttons(bs); }
+  function phaseBlow() { const G = M.G; if (!G.items.some(i => i.s === 'candle')) { [0, 1, 2].forEach(k => G.items.push({ n: '초', c: SPR[k + 1], s: 'candle', x: (k - 1) * 22, y: -8 + Math.abs(k - 1) * 6, rot: 0, z: 1 })); } G.phase = 'blow'; G.lit = true; M.tip.textContent = '소원 하나 빌고… 후— 불어요!'; M.buttons([['후— 불기', blow, 'main']]); if (AU && AU.ctx) song(); }
+  function song() { const N = { G: 392, A: 440, B: 494, C: 523, D: 587, E: 659, F: 698, g: 784 }; let t = AU.ctx.currentTime + .1; 'G.5 G.5 A1 G1 C1 B2 G.5 G.5 A1 G1 D1 C2'.split(' ').forEach(n => { const d = parseFloat(n.slice(1)) * .34; tone(t, N[n[0]], .04 * MIX.amb, .01, d * .95, 'triangle', .35); t += d; }); }
+  function blow() { const G = M.G; if (!G.lit) return; G.lit = false; G.items.filter(i => i.s === 'candle').forEach(i => { for (let k = 0; k < 6; k++) G.smoke.push({ x: i.x, y: i.y - 22, vy: rand(14, 26), vx: rand(-6, 6), a: 1 }); }); if (AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 900, .7, .12 * MIX.amb, .02, .5, .1); setTimeout(finish, 1300); }
+  function place(p) {
+    const G = M.G; if (!G.sel) { M.tip.textContent = '먼저 아래에서 토핑을 골라요.'; return; }
+    const q = toLocal(p), d = Math.hypot(q.x, q.y); if (d > R - 4) { M.tip.textContent = '케이크 위에 올려요. 돌림판은 못 먹어요.'; return; }
+    const t = G.sel;
+    if (t[2] === 'plaque') { G.items = G.items.filter(i => i.s !== 'plaque'); G.items.push({ n: t[0], c: t[1], s: 'plaque', x: q.x, y: q.y, rot: 0, z: 1 }); }
+    else { const n = t[2] === 'spr' ? 14 : t[2] === 'dot' ? 3 : 1; for (let i = 0; i < n; i++) { const a2 = rand(0, TAU), rr = n > 1 ? rand(0, t[2] === 'spr' ? 26 : 10) : 0, x = q.x + Math.cos(a2) * rr, y = q.y + Math.sin(a2) * rr; if (Math.hypot(x, y) > R - 4) continue; G.items.push({ n: t[0], c: t[2] === 'spr' ? pick(SPR) : t[1], s: t[2], x, y, rot: rand(0, TAU), z: rand(.85, 1.15) }); } }
+    if (AU && AU.ctx) tone(AU.ctx.currentTime, rand(500, 700), .025 * MIX.amb, .002, .06, 'sine', .3);
+  }
+  function step(dt) {
+    const G = M.G; G.t += dt;
+    const wt = G.phase === 'ice' || G.phase === 'pipe' ? 3.2 : 0; G.w += (wt - G.w) * Math.min(1, dt * 2); G.rot += G.w * dt;
+    if (G.w > .5 && AU && AU.ctx && Math.random() < dt * 3) noiseHit(AU.ctx.currentTime, 'lowpass', 180, .5, .012 * MIX.wheel, .05, .3, .1);
+    if (G.phase === 'ice' && G.drag) { const q = toLocal(G.drag); if (Math.hypot(q.x, q.y) < R + 4) { const s = 400 / (R * 2.2), cg = G.cg, a = G.ll || q; cg.strokeStyle = CREAM[G.col][1]; cg.lineCap = 'round'; cg.lineWidth = 40 * s; cg.beginPath(); cg.moveTo(200 + a.x * s, 200 + a.y * s); cg.lineTo(200 + q.x * s + .1, 200 + q.y * s); cg.stroke(); G.ll = q; if (Math.random() < dt * 4 && AU && AU.ctx) noiseHit(AU.ctx.currentTime, 'lowpass', 500, .6, .02 * MIX.amb, .01, .15, .05); } else G.ll = null; }
+    if (G.phase === 'ice') { G.covT -= dt; if (G.covT < 0) { G.covT = .5; const d = G.cg.getImageData(0, 0, 400, 400).data, s = 400 / (R * 2.2); let a = 0, n = 0; for (let y = 0; y < 400; y += 8) for (let x = 0; x < 400; x += 8) { const lx = (x - 200) / s, ly = (y - 200) / s; if (lx * lx + ly * ly < R * R) { n++; if (d[(y * 400 + x) * 4 + 3] > 100) a++; } } G.cov = n ? a / n : 0; } }
+    if (G.phase === 'pipe' && G.drag) { const q = toLocal(G.drag), d = Math.hypot(q.x, q.y); if (d > R - 26 && d < R + 14) { const a = Math.atan2(q.y, q.x); if (!G.rim.some(r => Math.abs(((r.a - a + Math.PI * 3) % TAU) - Math.PI) < .17)) { G.rim.push({ a, c: CREAM[G.col][1], r: R - 9 }); if (AU && AU.ctx) tone(AU.ctx.currentTime, 520 + G.rim.length * 6, .015 * MIX.amb, .002, .05, 'sine', .3); } } }
+    G.smoke.forEach(s => { s.y -= s.vy * dt; s.x += s.vx * dt; s.a -= dt * .7; }); G.smoke = G.smoke.filter(s => s.a > 0);
+  }
+  function cakeAt(g, cx, cy, sc) {
+    const G = M.G; g.save(); g.translate(cx, cy); g.scale(sc, sc);
+    g.fillStyle = 'rgba(0,0,0,.14)'; g.beginPath(); g.arc(4, 7, R + 2, 0, TAU); g.fill();
+    g.rotate(G.rot);
+    g.fillStyle = '#e8c08a'; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill(); g.fillStyle = 'rgba(160,100,40,.18)'; for (let i = 0; i < 40; i++) { const a = i * 2.4, r = (i * 37 % 100) / 100 * R * .92; g.beginPath(); g.arc(Math.cos(a) * r, Math.sin(a) * r, 2, 0, TAU); g.fill(); }
+    g.save(); g.beginPath(); g.arc(0, 0, R + 2, 0, TAU); g.clip(); g.drawImage(G.cream, -R * 1.1, -R * 1.1, R * 2.2, R * 2.2); g.restore();
+    G.rim.forEach(r => { const x = Math.cos(r.a) * r.r, y = Math.sin(r.a) * r.r; g.fillStyle = r.c; g.beginPath(); g.arc(x, y, 10, 0, TAU); g.fill(); g.strokeStyle = 'rgba(0,0,0,.08)'; g.lineWidth = 1.5; g.beginPath(); g.arc(x, y, 6, 0, 5); g.stroke(); g.fillStyle = 'rgba(255,255,255,.5)'; g.beginPath(); g.arc(x - 3, y - 3, 3, 0, TAU); g.fill(); });
+    G.items.forEach(it => { g.save(); g.translate(it.x, it.y); g.rotate(it.s === 'candle' || it.s === 'plaque' ? -G.rot : it.rot); g.scale(it.z, it.z); g.fillStyle = it.c;
+      if (it.s === 'berry') { g.beginPath(); g.moveTo(0, 9); g.bezierCurveTo(-10, 2, -8, -8, 0, -7); g.bezierCurveTo(8, -8, 10, 2, 0, 9); g.fill(); g.fillStyle = '#4f9a45'; g.fillRect(-4, -9, 8, 3); g.fillStyle = 'rgba(255,240,200,.8)'; for (let k = 0; k < 5; k++) g.fillRect(-4 + (k % 3) * 4, -3 + (k > 2 ? 5 : 0), 1.2, 1.6); }
+      else if (it.s === 'dot') { g.beginPath(); g.arc(0, 0, 4.5, 0, TAU); g.fill(); g.fillStyle = 'rgba(255,255,255,.3)'; g.beginPath(); g.arc(-1.5, -1.5, 1.5, 0, TAU); g.fill(); }
+      else if (it.s === 'slice') { g.beginPath(); g.arc(0, 0, 9, Math.PI, 0); g.closePath(); g.fill(); g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 1; for (let k = 1; k < 4; k++) { g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(Math.PI + k * .78) * 8, Math.sin(Math.PI + k * .78) * 8); g.stroke(); } }
+      else if (it.s === 'cube') { g.fillRect(-5, -5, 10, 10); g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(-5, -5, 10, 3); }
+      else if (it.s === 'leaf') { g.beginPath(); g.ellipse(0, 0, 7, 3.5, 0, 0, TAU); g.fill(); }
+      else if (it.s === 'spr') { g.fillRect(-3, -1, 6, 2); }
+      else if (it.s === 'plaque') { g.fillStyle = '#4a2e22'; g.beginPath(); g.ellipse(0, 0, 46, 18, 0, 0, TAU); g.fill(); g.strokeStyle = '#e2b53b'; g.lineWidth = 1.5; g.beginPath(); g.ellipse(0, 0, 42, 15, 0, 0, TAU); g.stroke(); g.fillStyle = '#fbf6ee'; g.font = '700 12px "Gowun Batang", serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(`생일 축하해 ${who}`, 0, 1); }
+      else if (it.s === 'candle') { g.fillStyle = it.c; g.fillRect(-3, -22, 6, 22); g.fillStyle = 'rgba(255,255,255,.6)'; for (let k = 0; k < 3; k++) g.fillRect(-3, -19 + k * 7, 6, 2); g.fillStyle = '#3a2a28'; g.fillRect(-.6, -26, 1.2, 4);
+        if (G.lit) { const f = 1 + Math.sin(G.t * 18 + it.x) * .12; const fg = g.createRadialGradient(0, -31, 1, 0, -31, 14); fg.addColorStop(0, 'rgba(255,220,140,.7)'); fg.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = fg; g.beginPath(); g.arc(0, -31, 14, 0, TAU); g.fill(); g.fillStyle = '#ffd27a'; g.beginPath(); g.ellipse(0, -31, 3.2, 6 * f, 0, 0, TAU); g.fill(); g.fillStyle = '#fff3d6'; g.beginPath(); g.ellipse(0, -30, 1.4, 3, 0, 0, TAU); g.fill(); } }
+      g.restore(); });
+    g.rotate(-G.rot); G.smoke.forEach(s => { g.fillStyle = `rgba(200,200,200,${s.a * .5})`; g.beginPath(); g.arc(s.x, s.y, 4 + (1 - s.a) * 8, 0, TAU); g.fill(); });
+    g.restore();
+  }
+  function draw() {
+    const G = M.G, { g, W, H } = M, c = C0(); bg(g, W, H);
+    if (G.phase === 'blow' || G.phase === 'show') { g.fillStyle = 'rgba(30,20,20,.35)'; g.fillRect(0, 0, W, H); }
+    cakeAt(g, c.x, c.y, 1);
+    if (G.phase === 'ice') { const x0 = 40, w0 = W - 80, y0 = H - 92; g.fillStyle = 'rgba(46,42,38,.15)'; g.fillRect(x0, y0, w0, 6); g.fillStyle = '#2e2a26'; g.fillRect(x0, y0, w0 * G.cov, 6); g.fillStyle = '#5b534b'; g.font = '12px "Gowun Dodum", sans-serif'; g.textAlign = 'center'; g.fillText(`아이싱 ${Math.round(G.cov * 100)}%`, W / 2, y0 - 6); }
+    if (G.phase === 'show' && G.conf) { G.conf.forEach(p => { p.y += p.v; p.x += Math.sin(G.t * 2 + p.r) * .6; p.r += .1; g.save(); g.translate(p.x, p.y); g.rotate(p.r); g.fillStyle = p.c; g.fillRect(-4, -2, 8, 4); g.restore(); }); }
+  }
+  function finish() {
+    const G = M.G; if (G.phase === 'show') return; G.phase = 'show';
+    G.conf = Array.from({ length: 90 }, () => ({ x: rand(0, M.W), y: rand(-M.H, 0), v: rand(1.5, 3.5), r: rand(0, TAU), c: pick(SPR) }));
+    const cov = Math.round(G.cov * 100), rim = G.rim.length, names = [...new Set(G.items.filter(i => !['candle', 'plaque', 'spr'].includes(i.s)).map(i => i.n))], candles = G.items.filter(i => i.s === 'candle').length;
+    const cream = CREAM[G.col][0].replace('크림', '');
+    const name = (names.length ? names.slice(0, 2).join(' ') + ' ' : '') + (cream === '생' ? '' : cream + ' ') + '생일 케이크';
+    const say = (cov < 45 ? pick(['시트가 반쯤 보이네요. 네이키드 케이크라고 하죠, 요즘엔.', '크림이 수줍네요. 그래도 맛은 같아요.']) : cov < 85 ? pick(['아이싱 고르게 잘 폈어요. 손이 물레를 알아요.', '이 정도면 공방 납품 가능해요.']) : pick(['크림이 시유처럼 매끈해요. 완벽해요.', '아이싱 장인이시네요. 유약도 이렇게 바르면 돼요.']))
+      + (rim >= 30 ? ' 테두리가 꽉 찼네요.' : rim < 8 ? ' 테두리는… 미니멀리즘이네요.' : '') + (names.includes('곶감') ? ' 곶감 케이크는 처음 봐요. 찻자리에 딱이에요.' : '') + (G.items.some(i => i.s === 'plaque') ? ` 이름판까지! ${who}가 좋아하겠어요.` : '');
+    const n = MINI.rec('soyoho_cake', { name, cov, rim, at: Date.now() });
+    if (AU && AU.ctx) [784, 988, 1175, 1568].forEach((f, i) => tone(AU.ctx.currentTime + i * .1, f, .04 * MIX.amb, .002, .3, 'sine', .4));
+    M.buttons([]); M.tip.textContent = '';
+    setTimeout(() => { if (M.closed) return; M.panel(name, [[`자판기: “${esc(say)}”`, 'say q'], [`아이싱 ${cov}% · 테두리 ${rim}개 · 초 ${candles}개`, 'st'], [`지금까지 만든 케이크 ${n}개`, 'say']], [['하나 더', () => { M.close(); open(); }], ['축하 한마디 남기기', () => { M.close(); try { BDAY && BDAY.write(); } catch (e) {} }], ['잘 먹었습니다', () => M.close(), 'sub']]); }, 1600);
+  }
+  return { open, get m() { return M; } };
+})();
+const BDC = DAYS.jbday || DAYS.kbday; if (BDC) PIZZA.open = CAKE.open;
 // 입구: 냉동실·빙수 물레 → 빙수, 냉장고 열면 피자 안내
-function kitchenWheel() { const K = MINI.make('kpick', '부엌 물레'); K.bx.style.background = '#efe6d8'; K.bx.style.height = 'min(460px,100%)'; K.panel('부엌 물레', [[`자판기: “${esc(pick(['흙만 올리란 법 있나요. 물레는 원래 돌리는 거예요.', '오늘은 흙 말고 뭘 돌려 볼까요?', '현실에선 혼나요. 여기선 괜찮아요.']))}”`, 'say q'], ['얼음을 얹으면 빙수, 반죽을 얹으면 피자.']], [['얼음 얹어 빙수', () => { K.close(); BING.open(); }], ['반죽 얹어 피자', () => { K.close(); PIZZA.open(); }]]); }
+function kitchenWheel() { const K = MINI.make('kpick', '부엌 물레'); K.bx.style.background = '#efe6d8'; K.bx.style.height = 'min(460px,100%)'; K.panel('부엌 물레', [[`자판기: “${esc(pick(['흙만 올리란 법 있나요. 물레는 원래 돌리는 거예요.', '오늘은 흙 말고 뭘 돌려 볼까요?', '현실에선 혼나요. 여기선 괜찮아요.']))}”`, 'say q'], [BDC ? '얼음을 얹으면 빙수, 오늘은 생일이라 시트를 얹으면 케이크.' : '얼음을 얹으면 빙수, 반죽을 얹으면 피자.']], [['얼음 얹어 빙수', () => { K.close(); BING.open(); }], [BDC ? '🎂 시트 얹어 케이크' : '반죽 얹어 피자', () => { K.close(); PIZZA.open(); }]]); }
 { const tf = tapAt; tapAt = function (x, y) { ndc.set(x / innerWidth * 2 - 1, -(y / innerHeight) * 2 + 1); ray.setFromCamera(ndc, camera); const h = ray.intersectObjects(clickables.filter(o => o.visible !== false), false)[0], c = h && h.object.userData.click;
   if (c && (c.act === 'bingsu' || c.act === 'freezer')) { const fn = c.act === 'freezer' ? () => BING.open() : kitchenWheel, tx = BOX3D.P.x, tz = BOX3D.P.z - .65, near = S.mode !== 'walk' || Math.hypot(WALK.x - tx, WALK.z - tz) < 1.5; if (near) { fn(); return; } WALK.goal = { x: tx, z: tz, run: fn }; markGoal(tx, tz); return; }
   return tf.apply(this, arguments); }; }
-{ const tg = toggleFridge; toggleFridge = function () { const was = FRIDGE.target; const r = tg.apply(this, arguments); if (!was && FRIDGE.target) setTimeout(() => toast('냉장고에 재료가 좀 남았네요. 피자 구워 볼까요?', '피자 만들기', () => PIZZA.open(), 8), 700); return r; }; }
-{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'bingsu', x: BOX3D.P.x, z: BOX3D.P.z - .65, r: .45, text: '부엌 물레 (빙수·피자)', run: kitchenWheel }); if (FRIDGE.target) Z.push({ id: 'pizza', x: FRIDGE.x + .45, z: FRIDGE.z - .8, r: .4, text: '냉장고 재료로 피자 만들기', run: () => PIZZA.open() }); return Z; }; }
+{ const tg = toggleFridge; toggleFridge = function () { const was = FRIDGE.target; const r = tg.apply(this, arguments); if (!was && FRIDGE.target) setTimeout(() => toast(BDC ? '오늘은 생일이에요. 냉장고 과일로 케이크 만들어 볼까요?' : '냉장고에 재료가 좀 남았네요. 피자 구워 볼까요?', BDC ? '케이크 만들기' : '피자 만들기', () => PIZZA.open(), 8), 700); return r; }; }
+{ const zf = zones; zones = function () { const Z = zf(); Z.push({ id: 'bingsu', x: BOX3D.P.x, z: BOX3D.P.z - .65, r: .45, text: BDC ? '부엌 물레 (빙수·케이크)' : '부엌 물레 (빙수·피자)', run: kitchenWheel }); if (FRIDGE.target) Z.push({ id: 'pizza', x: FRIDGE.x + .45, z: FRIDGE.z - .8, r: .4, text: BDC ? '냉장고 과일로 케이크 만들기' : '냉장고 재료로 피자 만들기', run: () => PIZZA.open() }); return Z; }; }
 
 /* ── 서리 그림: 추운 날 창가 유리 ── */
 const FROST = (() => {
