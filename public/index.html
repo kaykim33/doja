@@ -7363,6 +7363,29 @@ const METEOR = (() => {
   $('#enter').addEventListener('click', () => { const lv = level(); if (!lv) return; setTimeout(function nt() { if (document.querySelector('.bdinv')) return setTimeout(nt, 6000); const night = (LIGHT.night || 0) > .35; toast(lv === 2 ? (night ? '🌠 지금 사자자리 유성우 극대예요! 정원에 나가 하늘을 올려다봐요.' : '🌠 오늘 밤~내일 새벽, 사자자리 유성우 극대! 밤에 공방 하늘에도 쏟아져요.') : '🌠 사자자리 유성우 기간이에요. 밤하늘에 가끔 별똥별이 지나가요.', night ? '하늘 보기' : null, night ? () => { try { WALK.goal = { x: .8, z: -8.5 }; markGoal(.8, -8.5); } catch (e) {} } : null, 9); }, 12000); });
   return o;
 })();
+/* ── 전체 화면 확대·축소: 두 손가락 벌리기, 마우스 휠, ＋/－ 버튼 ── */
+const ZOOM = (() => {
+  const MIN = .55, MAX = 2.6; let z = clamp(+store.get('camZoom', 1) || 1, MIN, MAX);
+  const apply = (v, save) => { z = clamp(v, MIN, MAX); camera.zoom = z; camera.updateProjectionMatrix(); if (lab) lab.textContent = Math.round(z * 100) + '%'; if (save) store.set('camZoom', +z.toFixed(2)); };
+  const P = new Map(); let d0 = 0, z0 = 1, pinch = false;
+  const dist = () => { const [a, b] = [...P.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+  const onCanvas = e => e.target === canvas;
+  addEventListener('pointerdown', e => { if (!onCanvas(e) || S.mode === 'title') return; P.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (P.size === 2) { pinch = true; d0 = dist(); z0 = z; PT.moved += 999; e.stopImmediatePropagation(); } }, true);
+  addEventListener('pointermove', e => { if (!P.has(e.pointerId)) return; P.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (pinch && P.size >= 2) { e.stopImmediatePropagation(); if (d0 > 10) apply(z0 * dist() / d0); } else if (pinch) e.stopImmediatePropagation(); }, true);
+  const up = e => { if (!P.has(e.pointerId)) return; P.delete(e.pointerId); if (pinch && P.size < 2) { apply(z, true); if (!P.size) pinch = false; PT.moved += 999; } };
+  addEventListener('pointerup', up, true); addEventListener('pointercancel', up, true);
+  canvas.addEventListener('wheel', e => { if (S.mode === 'title') return; e.preventDefault(); apply(z * Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0015)), true); }, { passive: false });
+  canvas.style.touchAction = 'none';
+  // 버튼
+  const box = document.createElement('div'); box.id = 'zoomUI'; box.hidden = true;
+  const mk = (t, lb, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.setAttribute('aria-label', lb); b.onclick = e => { e.stopPropagation(); fn(); }; box.append(b); return b; };
+  mk('＋', '확대', () => apply(z * 1.25, true)); const lab = mk('100%', '원래 크기로', () => apply(1, true)); lab.className = 'zl'; mk('－', '축소', () => apply(z / 1.25, true));
+  document.body.append(box);
+  const st = document.createElement('style'); st.textContent = '#zoomUI{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:4px;background:rgba(251,246,238,.82);backdrop-filter:blur(6px);border-radius:22px;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.12)}#zoomUI button{width:36px;height:36px;border:0;border-radius:18px;background:transparent;font:inherit;font-size:20px;color:#2d2924;cursor:pointer}#zoomUI button:active{background:rgba(45,41,36,.1)}#zoomUI .zl{font-size:10.5px;height:24px;color:#6b625a}#zoomUI[hidden]{display:none}';
+  document.head.append(st);
+  $('#enter').addEventListener('click', () => { box.hidden = false; apply(z); });
+  return { apply, get z() { return z; } };
+})();
 /* ── 실제 대구 바람·기온 ── */
 (() => {
   const st = document.createElement('style'); st.textContent = '#tempTint{position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 4s}'; document.head.append(st);
