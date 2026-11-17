@@ -5068,16 +5068,16 @@ function pourTick(dt) {
 // ================= 찻자리 왼쪽(보는 쪽 기준): 면 깎은 연둣빛 잔 =================
 {
   const g = new THREE.Group(); g.position.set(.4, .386, .0); g.rotation.y = .3; teaG.add(g);
-  const GL = new THREE.MeshPhysicalMaterial({ color: C('#d3e2d4'), roughness: .2, clearcoat: 1, clearcoatRoughness: .12 });
-  const H = .1, R = .032, N = 14, FA = TAU / N;
-  const geo = lathe([[0, 0], [.029, 0], [.0318, .002], [R, .006], [R, H - .003], [.0312, H], [.0285, H - .001], [.0278, H - .008], [.0275, .01], [0, .009]], N * 8);
-  const tops = Array.from({ length: N }, (_, i) => H * (.6 + .16 * Math.abs(Math.sin(i * 2.7 + 1.3))));
+  const GL = new THREE.MeshPhysicalMaterial({ color: C('#d4dcd3'), roughness: .2, clearcoat: 1, clearcoatRoughness: .12 });
+  const H = .112, R = .031, N = 12, FA = TAU / N; // 위는 둥글게, 아래만 12면
+  const geo = lathe([[0, 0], [.028, 0], [.0305, .002], ...Array.from({ length: 28 }, (_, i) => [R, .006 + (H - .009) * i / 27]), [.0302, H], [.0284, H - .001], [.0277, H - .008], [.0274, .01], [0, .009]], N * 8);
+  const tops = Array.from({ length: N }, (_, i) => H * (.4 + .2 * Math.abs(Math.sin(i * 2.7 + 1.3))));
   const pp = geo.attributes.position;
   for (let i = 0; i < pp.count; i++) {
     const x = pp.getX(i), y = pp.getY(i), z = pp.getZ(i), r = Math.hypot(x, z);
-    if (r < .0305 || y > H - .004) continue; // 바깥 벽만 깎기
+    if (r < .0285 || y > H - .004) continue; // 바깥 벽만 깎기
     const a = (Math.atan2(z, x) + TAU) % TAU, f = Math.floor(a / FA) % N, la = a - f * FA - FA / 2;
-    const poly = R * .9 / Math.cos(la), k = 1 - smooth(tops[f] - .022, tops[f], y);
+    const poly = R * .93 / Math.cos(la), k = 1 - smooth(tops[f] - .03, tops[f], y);
     const nr = lerp(r, Math.min(r, poly), k); pp.setX(i, x / r * nr); pp.setZ(i, z / r * nr);
   }
   geo.computeVertexNormals(); window.FCUP = { g, geo, GL, m: mesh(geo, GL, 0, 0, 0, g) };
@@ -7389,7 +7389,7 @@ const ZOOM = (() => {
 /* ── 다채로운 컵: 반짝임·이름표·눌러서 크게 돌려 보기 ── */
 const FCUPV = (() => {
   const F = window.FCUP; if (!F) return null;
-  const NAME = '다채로운 컵', DESC = '열네 개의 면을 하나하나 깎아 낸 연둣빛 잔. 빛이 닿는 쪽마다 면의 색이 달라져요. 손에 쥐면 손가락이 알아서 자리를 찾아요.';
+  const NAME = '다채로운 컵', DESC = '위는 매끈하게 둥글고, 아래만 열두 면을 깎아 낸 연둣빛 잔. 면이 끝나는 높이가 저마다 달라서 빛 따라 결이 달라져요. 손에 쥐면 손가락이 알아서 자리를 찾아요.';
   // 반짝임
   const star = canvasTex(64, 64, c => { c.translate(32, 32); const gr = c.createRadialGradient(0, 0, 0, 0, 0, 30); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(.25, 'rgba(240,255,235,.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; [0, Math.PI / 2].forEach(r => { c.save(); c.rotate(r); c.beginPath(); c.ellipse(0, 0, 30, 3.2, 0, 0, TAU); c.fill(); c.restore(); }); c.beginPath(); c.arc(0, 0, 7, 0, TAU); c.fill(); });
   const SP = [0, 1].map(() => { const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: star, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0 })); s.scale.setScalar(0); scene.add(s); return { s, t: 9, d: .7 }; });
@@ -7415,13 +7415,13 @@ const FCUPV = (() => {
     const cv = document.createElement('canvas'); ov.append(cv);
     const info = el('div', 'fci'); const h = el('h2'); h.textContent = NAME; const p = el('p'); p.textContent = DESC; const hint = el('small'); hint.textContent = '끌어서 돌려 보세요';
     const row = el('div', 'fcr'); const lb = el('button'); lb.type = 'button'; lb.textContent = '빛 바꾸기 · 아침'; const xb = el('button'); xb.type = 'button'; xb.textContent = '닫기'; xb.className = 'x'; row.append(lb, xb); info.append(h, p, hint, row); ov.append(info); document.body.append(ov);
-    const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, devicePixelRatio)); R.outputEncoding = renderer.outputEncoding; R.toneMapping = renderer.toneMapping; R.toneMappingExposure = .95; R.physicallyCorrectLights = renderer.physicallyCorrectLights;
+    const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, devicePixelRatio)); R.outputEncoding = renderer.outputEncoding; R.toneMapping = renderer.toneMapping; R.toneMappingExposure = .85; R.physicallyCorrectLights = renderer.physicallyCorrectLights;
     const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .01, 10); cam.position.set(0, .09, .34); cam.lookAt(0, .042, 0);
     const cup = new THREE.Group(); sc.add(cup); const m = new THREE.Mesh(F.geo, F.GL.clone()); m.material.color.set('#c9dcc8'); m.material.roughness = .12; m.material.flatShading = true; m.material.needsUpdate = true; m.position.y = -.005; cup.add(m);
     const ped = new THREE.Mesh(new THREE.CylinderGeometry(.075, .08, .01, 48), new THREE.MeshStandardMaterial({ color: C('#5a554c'), roughness: .6 })); ped.position.y = -.01; ped.scale.setScalar(.8); sc.add(ped);
     sc.add(new THREE.HemisphereLight(0xffffff, 0x2a2824, .12));
     const MODES = [['아침', ['#ffe3a6', '#7fd6a0', '#8fb8ff']], ['노을', ['#ff9a5a', '#ff6f8f', '#ffd36e']], ['달빛', ['#7f9cf0', '#b98ae8', '#8fe0d6']]]; let mi = 0;
-    const PL = [0, 1, 2].map(i => { const l = new THREE.DirectionalLight(0xffffff, 1.5); sc.add(l); return l; }); const key = new THREE.DirectionalLight(0xffffff, .25); key.position.set(.3, .6, .5); sc.add(key);
+    const PL = [0, 1, 2].map(i => { const l = new THREE.DirectionalLight(0xffffff, .9); sc.add(l); return l; }); const key = new THREE.DirectionalLight(0xffffff, 1.0); key.position.set(-.7, .35, .45); sc.add(key);
     const setMode = () => { MODES[mi][1].forEach((c, i) => PL[i].color.set(c)); lb.textContent = '빛 바꾸기 · ' + MODES[mi][0]; }; setMode(); lb.onclick = () => { mi = (mi + 1) % MODES.length; setMode(); SFX.ding(); };
     let ry = 0, rx = .12, vy = .5, drag = null; cv.style.touchAction = 'none';
     cv.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY }; cv.setPointerCapture(e.pointerId); vy = 0; };
@@ -7433,7 +7433,7 @@ const FCUPV = (() => {
     raf = requestAnimationFrame(loop);
     const close = () => { cancelAnimationFrame(raf); removeEventListener('resize', size); R.dispose(); m.material.dispose(); ov.remove(); V = null; };
     xb.onclick = close; ov.addEventListener('keydown', e => { if (e.key === 'Escape') close(); }); xb.focus();
-    V = { close }; try { teacherSay(pick(['그 잔, 면이 열네 개예요. 하나하나 다 깎았어요.', '빛을 바꿔 보세요. 같은 잔이 세 번 달라져요.', '다채롭다는 말이 딱이죠.']), 4); } catch (e) {}
+    V = { close }; try { teacherSay(pick(['그 잔, 아래만 열두 면이에요. 위는 일부러 둥글게 남겼어요.', '빛을 바꿔 보세요. 같은 잔이 세 번 달라져요.', '다채롭다는 말이 딱이죠.']), 4); } catch (e) {}
   }
   const st = document.createElement('style'); st.textContent = '.fcv{position:fixed;inset:0;z-index:95;background:radial-gradient(90% 70% at 50% 38%,#4a4740 0%,#2a2824 60%,#1c1b18 100%);display:flex;flex-direction:column;animation:bdfade .3s}.fcv canvas{flex:1;width:100%;min-height:0;cursor:grab}.fci{padding:14px 20px max(18px,env(safe-area-inset-bottom));max-width:520px;margin:0 auto;text-align:center;color:#f1ece3}.fci h2{margin:0 0 6px;font-family:"Gowun Batang",serif;font-size:24px;color:#cfe6c8}.fci p{margin:0 0 6px;font-size:14.5px;line-height:1.6;word-break:keep-all;color:#ddd6ca}.fci small{display:block;color:#a9a294;font-size:12px;margin-bottom:10px}.fcr{display:flex;gap:8px;justify-content:center}.fcr button{height:44px;padding:0 18px;border-radius:22px;border:0;font:inherit;font-size:15px;cursor:pointer;background:rgba(255,255,255,.12);color:#f1ece3}.fcr .x{background:#f1ece3;color:#2d2924}';
   document.head.append(st);
