@@ -5082,7 +5082,7 @@ function pourTick(dt) {
   }
   geo.computeVertexNormals(); window.FCUP = { g, geo, GL, m: mesh(geo, GL, 0, 0, 0, g) };
 }
-TEA_LINES.push('면이 이렇게 많으니, 참 다채로운 잔이군요.', '연둣빛 잔이 오늘따라 다채로워 보여요. 빛 따라 면마다 색이 달라요.', '면 깎은 잔은 손에 쥐면 손가락이 알아서 자리를 찾아요.');
+TEA_LINES.push('그 연둣빛 잔은 초소요호 회원님 작품이에요. 다채로운 컵.', '면이 이렇게 많으니, 참 다채로운 잔이군요.', '연둣빛 잔이 오늘따라 다채로워 보여요. 빛 따라 면마다 색이 달라요.', '면 깎은 잔은 손에 쥐면 손가락이 알아서 자리를 찾아요.');
 
 // ================= 자판기 신작: 풍류주전자 =================
 VM.M.pungryu = () => {
@@ -7413,8 +7413,8 @@ const FCUPV = (() => {
   function open() { if (V) return; SFX.ding();
     const ov = el('div', 'fcv'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', NAME);
     const cv = document.createElement('canvas'); ov.append(cv);
-    const info = el('div', 'fci'); const h = el('h2'); h.textContent = NAME; const p = el('p'); p.textContent = DESC; const hint = el('small'); hint.textContent = '끌어서 돌려 보세요';
-    const row = el('div', 'fcr'); const lb = el('button'); lb.type = 'button'; lb.textContent = '빛 바꾸기 · 아침'; const xb = el('button'); xb.type = 'button'; xb.textContent = '닫기'; xb.className = 'x'; row.append(lb, xb); info.append(h, p, hint, row); ov.append(info); document.body.append(ov);
+    const info = el('div', 'fci'); const h = el('h2'); h.textContent = NAME; const by = el('div', 'fcb'); by.textContent = '초소요호 회원 작품'; const p = el('p'); p.textContent = DESC; const hint = el('small'); hint.textContent = '끌어서 돌려 보세요';
+    const row = el('div', 'fcr'); const lb = el('button'); lb.type = 'button'; lb.textContent = '빛 바꾸기 · 아침'; const xb = el('button'); xb.type = 'button'; xb.textContent = '닫기'; xb.className = 'x'; row.append(lb, xb); info.append(h, by, p, hint, row); ov.append(info); document.body.append(ov);
     const R = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); R.setPixelRatio(Math.min(2, devicePixelRatio)); R.outputEncoding = renderer.outputEncoding; R.toneMapping = renderer.toneMapping; R.toneMappingExposure = .85; R.physicallyCorrectLights = renderer.physicallyCorrectLights;
     const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(30, 1, .01, 10); cam.position.set(0, .09, .34); cam.lookAt(0, .042, 0);
     const cup = new THREE.Group(); sc.add(cup); const m = new THREE.Mesh(F.geo, F.GL.clone()); m.material.color.set('#c9dcc8'); m.material.roughness = .12; m.material.flatShading = true; m.material.needsUpdate = true; m.position.y = -.005; cup.add(m);
@@ -7433,9 +7433,9 @@ const FCUPV = (() => {
     raf = requestAnimationFrame(loop);
     const close = () => { cancelAnimationFrame(raf); removeEventListener('resize', size); R.dispose(); m.material.dispose(); ov.remove(); V = null; };
     xb.onclick = close; ov.addEventListener('keydown', e => { if (e.key === 'Escape') close(); }); xb.focus();
-    V = { close }; try { teacherSay(pick(['그 잔, 아래만 열두 면이에요. 위는 일부러 둥글게 남겼어요.', '빛을 바꿔 보세요. 같은 잔이 세 번 달라져요.', '다채롭다는 말이 딱이죠.']), 4); } catch (e) {}
+    V = { close }; try { teacherSay(pick(['초소요호 회원님 작품이에요. 아래만 열두 면, 위는 일부러 둥글게 남기셨대요.', '회원님이 깎은 잔인데, 제가 다 탐나요.', '빛을 바꿔 보세요. 같은 잔이 세 번 달라져요.', '다채롭다는 말이 딱이죠. 회원님 작명 센스예요.']), 4); } catch (e) {}
   }
-  const st = document.createElement('style'); st.textContent = '.fcv{position:fixed;inset:0;z-index:95;background:radial-gradient(90% 70% at 50% 38%,#4a4740 0%,#2a2824 60%,#1c1b18 100%);display:flex;flex-direction:column;animation:bdfade .3s}.fcv canvas{flex:1;width:100%;min-height:0;cursor:grab}.fci{padding:14px 20px max(18px,env(safe-area-inset-bottom));max-width:520px;margin:0 auto;text-align:center;color:#f1ece3}.fci h2{margin:0 0 6px;font-family:"Gowun Batang",serif;font-size:24px;color:#cfe6c8}.fci p{margin:0 0 6px;font-size:14.5px;line-height:1.6;word-break:keep-all;color:#ddd6ca}.fci small{display:block;color:#a9a294;font-size:12px;margin-bottom:10px}.fcr{display:flex;gap:8px;justify-content:center}.fcr button{height:44px;padding:0 18px;border-radius:22px;border:0;font:inherit;font-size:15px;cursor:pointer;background:rgba(255,255,255,.12);color:#f1ece3}.fcr .x{background:#f1ece3;color:#2d2924}';
+  const st = document.createElement('style'); st.textContent = '.fcv{position:fixed;inset:0;z-index:95;background:radial-gradient(90% 70% at 50% 38%,#4a4740 0%,#2a2824 60%,#1c1b18 100%);display:flex;flex-direction:column;animation:bdfade .3s}.fcv canvas{flex:1;width:100%;min-height:0;cursor:grab}.fci{padding:14px 20px max(18px,env(safe-area-inset-bottom));max-width:520px;margin:0 auto;text-align:center;color:#f1ece3}.fci h2{margin:0 0 6px;font-family:"Gowun Batang",serif;font-size:24px;color:#cfe6c8}.fcb{font-size:12.5px;color:#a9c4a4;letter-spacing:.06em;margin:-2px 0 8px}.fci p{margin:0 0 6px;font-size:14.5px;line-height:1.6;word-break:keep-all;color:#ddd6ca}.fci small{display:block;color:#a9a294;font-size:12px;margin-bottom:10px}.fcr{display:flex;gap:8px;justify-content:center}.fcr button{height:44px;padding:0 18px;border-radius:22px;border:0;font:inherit;font-size:15px;cursor:pointer;background:rgba(255,255,255,.12);color:#f1ece3}.fcr .x{background:#f1ece3;color:#2d2924}';
   document.head.append(st);
   return { open };
 })();
