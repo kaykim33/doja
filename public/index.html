@@ -2594,13 +2594,13 @@ async function uploadPoster(i, file) {
   adStatus('이미지를 줄이고 올리는 중…');
   try {
     const bmp = await new Promise((res, rej) => { const img = new Image(); img.onload = () => res(img); img.onerror = rej; img.src = URL.createObjectURL(file); });
-    const s = Math.min(1, 1400 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s); cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
-    const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .86));
+    const s = Math.min(1, 1600 / Math.max(bmp.width, bmp.height)); const cv = document.createElement('canvas'); cv.width = Math.round(bmp.width * s); cv.height = Math.round(bmp.height * s); cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+    let blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .86)); if (blob && blob.size > 1500 * 1024) blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .7));
     const res = await BOARD.assets.upload(blob, { contentType: 'image/jpeg' });
     const old = BOARD.data.posters[i]; BOARD.data.posters[i] = { id: res.id, title: file.name.replace(/\.[^.]+$/, '').slice(0, 40) };
     if (await saveBoard('포스터를 걸었어요.')) { if (old && old.id !== res.id) BOARD.assets.delete(old.id).catch(() => {}); }
     openAdmin();
-  } catch (e) { adStatus('올리지 못했어요. ' + (e && e.code === 'too_large' ? '파일이 너무 커요.' : '다른 이미지로 다시 해 주세요.')); }
+  } catch (e) { const c = e && e.code; adStatus('올리지 못했어요. ' + (c === 'too_big' || c === 413 ? '파일이 너무 커요.' : c === 'not_granted' || c === 403 ? '관리자 로그인이 풀렸어요. 주소 끝에 #admin 을 붙여 다시 로그인해 주세요.' : c === 'type' ? '이미지 파일만 올릴 수 있어요.' : e && e.type === 'error' ? '이 이미지를 열 수 없어요. (HEIC면 JPG로 바꿔 주세요)' : `(${c || '알 수 없는 오류'}) 잠시 뒤 다시 해 주세요.`)); }
 }
 function closeAdmin() { ad.hidden = true; if (location.hash === '#admin') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) { location.hash = ''; } } }
 function checkHash() { if (location.hash === '#admin') openAdmin(); }
@@ -3305,7 +3305,7 @@ function vendRender(sec, editing) {
     try {
       const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
       const s = Math.min(1, 1200 / Math.max(img.width, img.height)), cv = document.createElement('canvas'); cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
-      const blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .86)); const up = await BOARD.assets.upload(blob, { contentType: 'image/jpeg' });
+      let blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .86)); if (blob && blob.size > 1500 * 1024) blob = await new Promise(r => cv.toBlob(r, 'image/jpeg', .7)); const up = await BOARD.assets.upload(blob, { contentType: 'image/jpeg' });
       photo = up.id; showPh(); adStatus('사진을 올렸어요. 저장을 눌러야 메뉴에 반영돼요.');
     } catch (e) { adStatus('사진을 올리지 못했어요.'); }
   });

@@ -30,7 +30,14 @@ const putDoc = (env, path, data) => { const i = path.lastIndexOf('/'); return en
 const merge = (a, b) => { const o = Object.assign({}, a); for (const [k, v] of Object.entries(b || {})) { if (v && typeof v === 'object' && !Array.isArray(v) && v.__delete__) delete o[k]; else if (v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k])) o[k] = merge(o[k], v); else o[k] = v; } return o; };
 
 // 누가 무엇을 쓸 수 있나
-function canRead(coll, admin) { const t = coll.split('/')[0]; return t === 'secret' ? false : (t === 'visits' || t === 'gosaw2611') ? admin : true; }
+// 한 번만 실행: 관리자 대신 포스터 걸기 (2026.11 소요호 마켓)
+const PIN = { id: '48a8d66f817331e51fb108dfbfb29fe9', title: 'SOYOHO MARKET 수평적관계 삼덕점' };
+async function pinPoster(env) {
+  try { const flag = 'sys/pin_' + PIN.id; if (await getDoc(env, flag)) return; const d = (await getDoc(env, 'board/main')) || { notices: [], posters: [null, null] };
+    const ps = Array.isArray(d.posters) ? d.posters : [null, null]; if (!ps.some(p => p && p.id === PIN.id)) d.posters = [PIN, ps[0] || ps[1] || null];
+    await putDoc(env, 'board/main', d); await putDoc(env, flag, { at: Date.now() }); } catch (e) {}
+}
+function canRead(coll, admin) { const t = coll.split('/')[0]; return t === 'secret' || t === 'sys' ? false : (t === 'visits' || t === 'gosaw2611') ? admin : true; }
 function canWrite(op, coll, id, admin, data) {
   const top = coll.split('/')[0];
   if (top === 'secret') return false;
@@ -119,15 +126,17 @@ export async function onRequest(ctx) {
 
   if (route.startsWith('assets')) {
     if (!admin) return J({ error: 'not_granted' }, 403);
-    if (!env.BLOBS) return J({ error: 'no_storage' }, 500);
+    // R2(BLOBS)가 연결 안 돼 있으면 D1 blobs 표에 저장 (1.8MB까지)
+    const d1b = () => env.DB.prepare('CREATE TABLE IF NOT EXISTS blobs (id TEXT PRIMARY KEY, type TEXT NOT NULL, data BLOB NOT NULL, ts INTEGER NOT NULL)').run();
     if (req.method === 'POST') {
       const type = req.headers.get('content-type') || 'application/octet-stream'; if (!/^image\//.test(type)) return J({ error: 'type' }, 400);
-      const buf = await req.arrayBuffer(); if (buf.byteLength > 20 * 1024 * 1024) return J({ error: 'too_big' }, 413);
+      const buf = await req.arrayBuffer(); if (buf.byteLength > (env.BLOBS ? 20 * 1024 * 1024 : 1800 * 1024)) return J({ error: 'too_big' }, 413);
       const id = [...crypto.getRandomValues(new Uint8Array(16))].map(x => x.toString(16).padStart(2, '0')).join('');
-      await env.BLOBS.put(id, buf, { httpMetadata: { contentType: type } });
+      if (env.BLOBS) await env.BLOBS.put(id, buf, { httpMetadata: { contentType: type } });
+      else { await d1b(); await env.DB.prepare('INSERT INTO blobs (id, type, data, ts) VALUES (?1, ?2, ?3, ?4)').bind(id, type, buf, Date.now()).run(); }
       return J({ id, url: '/_blob/' + id, sizeBytes: buf.byteLength, contentType: type });
     }
-    if (req.method === 'DELETE') { const id = route.split('/')[1]; if (/^[0-9a-f]{32}$/.test(id || '')) await env.BLOBS.delete(id); return J({ ok: true }); }
+    if (req.method === 'DELETE') { const id = route.split('/')[1]; if (/^[0-9a-f]{32}$/.test(id || '')) { if (env.BLOBS) await env.BLOBS.delete(id); try { await d1b(); await env.DB.prepare('DELETE FROM blobs WHERE id = ?1').bind(id).run(); } catch (e) {} } return J({ ok: true }); }
   }
 
   if (route === 'db' && req.method === 'GET') {
@@ -136,6 +145,7 @@ export async function onRequest(ctx) {
       if (!okPath(doc, true)) return J({ error: 'bad_path' }, 400);
       if (!canRead(doc.slice(0, doc.lastIndexOf('/')), admin)) return J({ exists: false });
       if (doc === 'weather/daegu') ctx.waitUntil(refreshWeather(env));
+      if (doc === 'board/main') await pinPoster(env);
       const d = await getDoc(env, doc); return J(d ? { exists: true, data: d } : { exists: false });
     }
     if (coll) {
