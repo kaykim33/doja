@@ -7368,7 +7368,7 @@ const METEOR = (() => {
 })();
 /* ── 전체 화면 확대·축소: 두 손가락 벌리기, 마우스 휠, ＋/－ 버튼 ── */
 const ZOOM = (() => {
-  const MIN = .55, MAX = 2.6; let z = clamp(+store.get('camZoom', 1) || 1, MIN, MAX);
+  const MIN = .55, MAX = 2.6, DEF = .85; let z = DEF; // 들어올 때마다 85%에서 시작
   const apply = (v, save) => { z = clamp(v, MIN, MAX); camera.zoom = z; camera.updateProjectionMatrix(); if (lab) lab.textContent = Math.round(z * 100) + '%'; if (save) store.set('camZoom', +z.toFixed(2)); };
   const P = new Map(); let d0 = 0, z0 = 1, pinch = false;
   const dist = () => { const [a, b] = [...P.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
@@ -7382,11 +7382,11 @@ const ZOOM = (() => {
   // 버튼
   const box = document.createElement('div'); box.id = 'zoomUI'; box.hidden = true;
   const mk = (t, lb, fn) => { const b = document.createElement('button'); b.type = 'button'; b.textContent = t; b.setAttribute('aria-label', lb); b.onclick = e => { e.stopPropagation(); fn(); }; box.append(b); return b; };
-  mk('＋', '확대', () => apply(z * 1.25, true)); const lab = mk('100%', '원래 크기로', () => apply(1, true)); lab.className = 'zl'; mk('－', '축소', () => apply(z / 1.25, true));
+  mk('＋', '확대', () => apply(z * 1.25, true)); const lab = mk('85%', '처음 크기로', () => apply(DEF, true)); lab.className = 'zl'; mk('－', '축소', () => apply(z / 1.25, true));
   document.body.append(box);
   const st = document.createElement('style'); st.textContent = '#zoomUI{position:fixed;left:max(12px,env(safe-area-inset-left,0px));top:50%;transform:translateY(-50%);z-index:6;display:flex;flex-direction:column;gap:4px;background:rgba(251,246,238,.82);backdrop-filter:blur(6px);border-radius:22px;padding:4px;box-shadow:0 4px 14px rgba(0,0,0,.12)}#zoomUI button{width:36px;height:36px;border:0;border-radius:18px;background:transparent;font:inherit;font-size:20px;color:#2d2924;cursor:pointer}#zoomUI button:active{background:rgba(45,41,36,.1)}#zoomUI .zl{font-size:10.5px;height:24px;color:#6b625a}#zoomUI[hidden]{display:none}';
   document.head.append(st);
-  $('#enter').addEventListener('click', () => { box.hidden = false; apply(z); });
+  $('#enter').addEventListener('click', () => { box.hidden = false; apply(DEF); });
   return { apply, get z() { return z; } };
 })();
 /* ── 다채로운 컵: 반짝임·이름표·눌러서 크게 돌려 보기 ── */
