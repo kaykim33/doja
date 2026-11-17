@@ -6244,7 +6244,7 @@ const SR = { x0: -5.0, x1: -1.6, z0: 4.2, z1: 8.0, h: 2.7 };
   const fl = mesh(new THREE.PlaneGeometry(w, d), floorW, cx, .002, cz, g); fl.rotation.x = -Math.PI / 2; fl.receiveShadow = true; fl.userData.ground = true; fl.userData.click = { act: 'floor' }; clickables.push(fl);
   for (let i = 1; i < 9; i++) mesh(new THREE.BoxGeometry(.01, .004, d), beam, SR.x0 + i * w / 9, .004, cz, g, false);
   const ce = mesh(new THREE.PlaneGeometry(w, d), std('#bfae96', 1), cx, SR.h, cz, g, false); ce.rotation.x = Math.PI / 2;
-  [[SR.x0 - .1, cz, .2, d + .4], [SR.x1 + .1, cz, .2, d + .4]].forEach(([x, z, ww, dd]) => mesh(new THREE.BoxGeometry(ww, SR.h, dd), plaster, x, SR.h / 2, z, g));
+  [[SR.x0 - .1], [SR.x1 + .1]].forEach(([x]) => mesh(new THREE.BoxGeometry(.2, SR.h, SR.z1 + .2 - 4.08), plaster, x, SR.h / 2, (4.08 + SR.z1 + .2) / 2, g)); // 공방 뒷벽(z=4)을 뚫고 나오지 않게
   mesh(new THREE.BoxGeometry(w + .4, SR.h, .2), plaster, cx, SR.h / 2, SR.z1 + .1, g);
   for (let i = 0; i < 3; i++) mesh(new THREE.BoxGeometry(w, .14, .12), beam, cx, SR.h - .07, SR.z0 + .6 + i * 1.3, g, false);
   // 백열 전구
