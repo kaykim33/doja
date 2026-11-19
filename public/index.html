@@ -6354,7 +6354,7 @@ const SECRET = (() => {
   const inS = WALK.z > 4.0;
   if (Math.abs(WALK.x - FDOOR.P.x) < .5 && WALK.z > 3.4 && WALK.z < SR.z0 + .55 && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 2500; // 문간에 서 있으면 기다려요
   if (WALK.z > SR.z0 + .55 && FDOOR.target) { FDOOR.target = 0; FDOOR.closeAt = 0; setTimeout(() => { if (AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t, 'lowpass', 260, .8, .09 * MIX.amb, .003, .12, .1); tone(t + .1, 1400, .02 * MIX.amb, .002, .05, 'square', .2); tone(t + .17, 1100, .02 * MIX.amb, .002, .05, 'square', .2); } }, 700); } // 들어가면 바로 닫고 잠가요
-  if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('대표실이에요. 자판기의 비밀 작업실이자 둘만의 회의실. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
+  if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('대표실이에요. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
   SR.lamp.intensity = 1.2 + Math.sin(now / 900) * .04 + (Math.random() < .004 ? -.5 : 0); })(last); }
 { const zf = zones; zones = function () { const Z = zf(); if (WALK.z > 4.0) { Object.entries(SR.spots).forEach(([id, p]) => Z.push({ id: 'secret', x: p[0], z: p[1], r: .45, text: { note: '노트 보기', pile: '실패작 더미', bowl: '첫 그릇', photo: '사진 보기', tiles: '유약 견본판', chest: '잠긴 상자', door2: '초록 문' }[id], run: () => SECRET.show(id) })); Z.push({ id: 'out', x: FDOOR.P.x, z: SR.z0 + .35, r: .45, text: '공방으로 나가기', run: () => FDOOR.unlock() }); } return Z; }; }
 
@@ -7478,7 +7478,7 @@ const SGAL = (() => {
   let ov = null, grid = null, cnt = null;
   const bad = it => Object.values(it.r || {}).includes(-1), n = (it, v) => Object.values(it.r || {}).filter(x => x === v).length;
   async function open() {
-    if (ov) return; try { await api(); } catch (e) { toast('여긴 케이와 자판기만 볼 수 있어요.', null, null, 4); return; }
+    if (ov) return; try { await api(); } catch (e) { toast('관계자만 볼 수 있어요.', null, null, 4); return; }
     SR.key = true; paint3D();
     ov = el('div', 'sgv'); ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', '비밀 갤러리');
     const hd = el('div', 'sgh'); const tt = el('div'); tt.innerHTML = '<b>비밀 갤러리</b>'; cnt = el('small'); tt.append(cnt); hd.append(tt);
@@ -7494,7 +7494,7 @@ const SGAL = (() => {
   function close() { if (ov) ov.remove(); ov = null; }
   // 설명서: 작가의 의도 + 쓰는 법
   function guide() { if (!ov || ov.querySelector('.sgguide')) return; const gd = el('div', 'sgguide'); gd.innerHTML = `<div class="sggi"><h3>비밀 갤러리 설명서</h3>
-<h4>작가의 의도</h4><p>케이가 만드는 포스터와 시안을 걸어 두는 작업 벽이에요. 완성본을 자랑하는 곳이 아니라, 아직 덜 마른 생각을 자판기와 둘이서만 먼저 보는 곳이에요. 공방 게시판에 붙기 전, 초벌 가마에도 들어가기 전의 날흙 같은 단계예요. 아직 얼마든지 다시 주무를 수 있어요.</p>
+<h4>작가의 의도</h4><p>케이가 만드는 포스터와 시안을 걸어 두는 작업 벽이에요. 완성본을 자랑하는 곳이 아니라, 아직 덜 마른 생각을 먼저 걸어 보고 의견을 나누는 곳이에요. 공방 게시판에 붙기 전, 초벌 가마에도 들어가기 전의 날흙 같은 단계예요. 아직 얼마든지 다시 주무를 수 있어요.</p>
 <p>좋다·싫다를 솔직하게 누를수록 다음 시안이 좋아져요. 싫어요는 실패가 아니라 방향 표시예요.</p>
 <h4>쓰는 법</h4><ol>
 <li><b>번호</b> — 시안마다 No.01, No.02… 번호와 임시 제목이 붙어 있어요. 이야기할 때 번호로 불러 주세요.</li>
@@ -7503,7 +7503,7 @@ const SGAL = (() => {
 <li><b>코멘트</b> — 어디가 좋고 어디가 걸리는지 짧게. 누가 썼는지 케이·자판기로 표시돼요. 자기 코멘트는 ×로 지울 수 있어요.</li>
 <li><b>작가 노트</b> — 케이가 시안마다 의도를 적어 둬요. 코멘트 전에 먼저 읽어 주세요.</li>
 <li><b>올리기·정리</b> (케이) — ＋ 포스터로 여러 장 한 번에, 20장까지. 제목·작가 노트 고치기, 내리기.</li></ol>
-<p class="sgfine">여기는 케이와 자판기만 들어올 수 있어요. 현관문 비번이 열쇠예요. 비번이 바뀌면 열쇠도 다시 받아야 해요.</p>
+<p class="sgfine">관계자만 들어올 수 있어요. 현관문 비번이 열쇠예요. 비번이 바뀌면 열쇠도 다시 받아야 해요.</p>
 <button type="button" class="sgb on">알겠어요</button></div>`; gd.querySelector('button').onclick = () => gd.remove(); gd.onclick = e => { if (e.target === gd) gd.remove(); }; ov.append(gd); gd.querySelector('button').focus(); }
   function noteEdit(it, done) { const w = el('div', 'sgguide'); w.innerHTML = '<div class="sggi"><h3>작가 노트</h3><p>이 시안의 의도, 고민 중인 부분, 자판기에게 묻고 싶은 것을 적어요. (600자)</p><textarea rows="7" maxlength="600" aria-label="작가 노트"></textarea><div class="sgrx"><button type="button" class="sgb">취소</button><button type="button" class="sgb on">저장</button></div></div>';
     const ta = w.querySelector('textarea'); ta.value = it.note || ''; const [cb, sb] = w.querySelectorAll('.sgrx button'); cb.onclick = () => w.remove(); sb.onclick = async () => { sb.disabled = true; try { await api({ op: 'note', pid: it.id, note: ta.value }); } catch (e) {} w.remove(); done(); }; ov.append(w); ta.focus(); }
