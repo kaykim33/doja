@@ -135,10 +135,12 @@ export async function onRequest(ctx) {
     if (b.op === 'add') { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^[0-9a-f]{32}$/.test(String(b.img || ''))) return J({ error: 'img' }, 400); if (G.items.length >= 30) return J({ error: 'full' }, 400);
       G.items.unshift({ id: [...crypto.getRandomValues(new Uint8Array(6))].map(x => x.toString(16).padStart(2, '0')).join(''), img: b.img, title: txt(b.title).slice(0, 40), at: Date.now(), r: {}, c: [] }); }
     else if (!it) return J({ error: 'none' }, 404);
-    else if (b.op === 'react') { it.r = it.r || {}; const v = +b.v; if (v === 1 || v === -1) it.r[who] = v; else delete it.r[who]; }
+    else if (b.op === 'react') { it.r = it.r || {}; const v = +b.v; if (v === 1 || v === -1) it.r[who] = v; else delete it.r[who];
+      const isBad = x => Object.values(x.r || {}).includes(-1); G.items = G.items.filter(x => !isBad(x)).concat(G.items.filter(isBad)); } // 싫어요가 있으면 맨 뒤로
     else if (b.op === 'comment') { const t = txt(b.text); if (!t) return J({ error: 'empty' }, 400); it.c = (it.c || []).concat([{ who, t, at: Date.now() }]).slice(-60); }
     else if (b.op === 'uncomment') { it.c = (it.c || []).filter(c => !(c.at === b.at && (c.who === who || admin))); }
     else if (b.op === 'title') { if (!admin) return J({ error: 'not_admin' }, 403); it.title = txt(b.title).slice(0, 40); }
+    else if (b.op === 'note') { if (!admin) return J({ error: 'not_admin' }, 403); it.note = String(b.note || '').trim().slice(0, 600); }
     else if (b.op === 'del') { if (!admin) return J({ error: 'not_admin' }, 403); G.items = G.items.filter(x => x.id !== b.pid); }
     else return J({ error: 'op' }, 400);
     await putDoc(env, 'secret/gallery', G); return J({ who, items: G.items });
