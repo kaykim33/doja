@@ -7,6 +7,8 @@ const okPath = (p, even) => { const s = String(p || '').split('/'); return s.len
 const LIMITS = { gallery: 60000, tiles: 240000, visits: 4000 };
 
 async function sha(t) { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); }
+const galToken = async h => sha('doja-gal:' + h);
+async function galWho(req, env) { const cur = await getDoc(env, 'secret/door'); if (!cur || !cur.h) return null; const t = await galToken(cur.h), c = req.headers.get('cookie') || ''; return c.split(/;\s*/).some(x => x === 'dj_gal=' + t) ? 'j' : null; }
 async function adminToken(env) { return env.ADMIN_PASSWORD ? sha('doja:' + env.ADMIN_PASSWORD) : null; }
 async function isAdmin(req, env) { const t = await adminToken(env); if (!t) return false; const c = req.headers.get('cookie') || ''; return c.split(/;\s*/).some(x => x === 'dj_admin=' + t); }
 
@@ -113,9 +115,33 @@ export async function onRequest(ctx) {
     const hash = async c => [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode('doja-door:' + c)))].map(x => x.toString(16).padStart(2, '0')).join('');
     const cur = await getDoc(env, 'secret/door');
     if (b.set) { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^\d{4}$/.test(code)) return J({ error: 'bad_code' }, 400); await putDoc(env, 'secret/door', { h: await hash(code), at: Date.now() }); return J({ ok: true, set: true }); }
-    if (!cur || !cur.h || !admin) return J({ ok: false, set: false }); // 지금은 관리자만 들어갈 수 있어요
+    if (!cur || !cur.h) return J({ ok: false, set: false });
+    // 비번을 아는 사람(케이·자판기)만: 틀리면 5번마다 10분 잠금
+    const fl = (await getDoc(env, 'secret/doorfail')) || { n: 0, until: 0 };
+    if (!admin && Date.now() < fl.until) return J({ ok: false, set: true, locked: Math.ceil((fl.until - Date.now()) / 1000) });
     await new Promise(r => setTimeout(r, 400));
-    return J({ ok: /^\d{4}$/.test(code) && (await hash(code)) === cur.h, set: true });
+    const ok = /^\d{4}$/.test(code) && (await hash(code)) === cur.h;
+    if (!ok) { if (!admin) { fl.n = (fl.n || 0) + 1; if (fl.n >= 5) { fl.n = 0; fl.until = Date.now() + 10 * 60e3; } await putDoc(env, 'secret/doorfail', fl); } return J({ ok: false, set: true }); }
+    if (fl.n) await putDoc(env, 'secret/doorfail', { n: 0, until: 0 });
+    return J({ ok: true, set: true }, 200, { 'set-cookie': `dj_gal=${await galToken(cur.h)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 90}` });
+  }
+  // 비밀 갤러리: 케이(관리자)·자판기(문 비번으로 받은 열쇠)만
+  if (route === 'sgal') {
+    const who = admin ? 'k' : await galWho(req, env); if (!who) return J({ error: 'no' }, 403);
+    const G = (await getDoc(env, 'secret/gallery')) || { items: [] }; G.items = Array.isArray(G.items) ? G.items : [];
+    if (req.method === 'GET') return J({ who, items: G.items });
+    if (req.method !== 'POST') return J({ error: 'method' }, 405);
+    const b = await req.json().catch(() => ({})), it = G.items.find(x => x.id === b.pid), txt = v => String(v || '').trim().slice(0, 300);
+    if (b.op === 'add') { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^[0-9a-f]{32}$/.test(String(b.img || ''))) return J({ error: 'img' }, 400); if (G.items.length >= 30) return J({ error: 'full' }, 400);
+      G.items.unshift({ id: [...crypto.getRandomValues(new Uint8Array(6))].map(x => x.toString(16).padStart(2, '0')).join(''), img: b.img, title: txt(b.title).slice(0, 40), at: Date.now(), r: {}, c: [] }); }
+    else if (!it) return J({ error: 'none' }, 404);
+    else if (b.op === 'react') { it.r = it.r || {}; const v = +b.v; if (v === 1 || v === -1) it.r[who] = v; else delete it.r[who]; }
+    else if (b.op === 'comment') { const t = txt(b.text); if (!t) return J({ error: 'empty' }, 400); it.c = (it.c || []).concat([{ who, t, at: Date.now() }]).slice(-60); }
+    else if (b.op === 'uncomment') { it.c = (it.c || []).filter(c => !(c.at === b.at && (c.who === who || admin))); }
+    else if (b.op === 'title') { if (!admin) return J({ error: 'not_admin' }, 403); it.title = txt(b.title).slice(0, 40); }
+    else if (b.op === 'del') { if (!admin) return J({ error: 'not_admin' }, 403); G.items = G.items.filter(x => x.id !== b.pid); }
+    else return J({ error: 'op' }, 400);
+    await putDoc(env, 'secret/gallery', G); return J({ who, items: G.items });
   }
   if (route === 'login' && req.method === 'POST') {
     const b = await req.json().catch(() => ({})); const t = await adminToken(env);
