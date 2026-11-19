@@ -34,6 +34,13 @@ const merge = (a, b) => { const o = Object.assign({}, a); for (const [k, v] of O
 // 누가 무엇을 쓸 수 있나
 // 한 번만 실행: 관리자 대신 포스터 걸기 (2026.11 소요호 마켓)
 const PIN = { id: '48a8d66f817331e51fb108dfbfb29fe9', title: 'SOYOHO MARKET 수평적관계 삼덕점' };
+const WIP = { id: '00819af06502ab120232d454c682d785', title: '작업 중 · SOYOHO MARKET 시안' };
+async function fillWip(env) {
+  try { const flag = 'sys/wip_' + WIP.id; if (await getDoc(env, flag)) return; const d = (await getDoc(env, 'board/main')) || { notices: [], posters: [null, null] };
+    const ps = Array.isArray(d.posters) ? d.posters.slice(0, 2) : [null, null]; while (ps.length < 2) ps.push(null);
+    if (!ps.some(p => p && p.id === WIP.id)) { const i = ps.findIndex(p => !p || !p.id); ps[i < 0 ? 1 : i] = WIP; }
+    d.posters = ps; await putDoc(env, 'board/main', d); await putDoc(env, flag, { at: Date.now() }); } catch (e) {}
+}
 async function pinPoster(env) {
   try { const flag = 'sys/pin_' + PIN.id; if (await getDoc(env, flag)) return; const d = (await getDoc(env, 'board/main')) || { notices: [], posters: [null, null] };
     const ps = Array.isArray(d.posters) ? d.posters : [null, null]; if (!ps.some(p => p && p.id === PIN.id)) d.posters = [PIN, ps[0] || ps[1] || null];
@@ -126,14 +133,19 @@ export async function onRequest(ctx) {
     return J({ ok: true, set: true }, 200, { 'set-cookie': `dj_gal=${await galToken(cur.h)}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${60 * 60 * 24 * 90}` });
   }
   // 비밀 갤러리: 케이(관리자)·자판기(문 비번으로 받은 열쇠)만
+  const GT = ['첫눈', '고요', '풍류', '등불', '찻물', '눈꽃', '밤마실', '설경', '백설기', '소요', '솔방울', '한겨울', '온기', '설야', '촛불', '귤빛', '동지', '서리', '은하', '새벽', '겨울잠', '흰 숨', '장작불', '포근'];
+  const galFix = G => { let ch = false; if (!G.v2) { [...G.items].sort((a, b) => (a.at || 0) - (b.at || 0)).forEach((x, i) => { x.n = i + 1; x.title = GT[i % GT.length]; }); G.n = G.items.length; G.v2 = 1;
+      if (G.memo == null) G.memo = '이번 시안은 부제 문구를 아무렇게나 넣었어요. 문구는 신경 쓰지 말고 레이아웃만 보고 골라 주세요. 상세는 고른 다음에 같이 고쳐요.'; ch = true; } return ch; };
   if (route === 'sgal') {
     const who = admin ? 'k' : await galWho(req, env); if (!who) return J({ error: 'no' }, 403);
     const G = (await getDoc(env, 'secret/gallery')) || { items: [] }; G.items = Array.isArray(G.items) ? G.items : [];
-    if (req.method === 'GET') return J({ who, items: G.items });
+    if (galFix(G)) await putDoc(env, 'secret/gallery', G);
+    if (req.method === 'GET') return J({ who, items: G.items, memo: G.memo || '' });
     if (req.method !== 'POST') return J({ error: 'method' }, 405);
     const b = await req.json().catch(() => ({})), it = G.items.find(x => x.id === b.pid), txt = v => String(v || '').trim().slice(0, 300);
     if (b.op === 'add') { if (!admin) return J({ error: 'not_admin' }, 403); if (!/^[0-9a-f]{32}$/.test(String(b.img || ''))) return J({ error: 'img' }, 400); if (G.items.length >= 30) return J({ error: 'full' }, 400);
-      G.items.unshift({ id: [...crypto.getRandomValues(new Uint8Array(6))].map(x => x.toString(16).padStart(2, '0')).join(''), img: b.img, title: txt(b.title).slice(0, 40), at: Date.now(), r: {}, c: [] }); }
+      G.n = Math.max(G.n || 0, ...G.items.map(x => x.n || 0)) + 1; G.items.unshift({ id: [...crypto.getRandomValues(new Uint8Array(6))].map(x => x.toString(16).padStart(2, '0')).join(''), img: b.img, n: G.n, title: GT[(G.n - 1) % GT.length], at: Date.now(), r: {}, c: [] }); }
+    else if (b.op === 'memo') { if (!admin) return J({ error: 'not_admin' }, 403); G.memo = String(b.memo || '').trim().slice(0, 400); }
     else if (!it) return J({ error: 'none' }, 404);
     else if (b.op === 'react') { it.r = it.r || {}; const v = +b.v; if (v === 1 || v === -1) it.r[who] = v; else delete it.r[who];
       const isBad = x => Object.values(x.r || {}).includes(-1); G.items = G.items.filter(x => !isBad(x)).concat(G.items.filter(isBad)); } // 싫어요가 있으면 맨 뒤로
@@ -143,7 +155,7 @@ export async function onRequest(ctx) {
     else if (b.op === 'note') { if (!admin) return J({ error: 'not_admin' }, 403); it.note = String(b.note || '').trim().slice(0, 600); }
     else if (b.op === 'del') { if (!admin) return J({ error: 'not_admin' }, 403); G.items = G.items.filter(x => x.id !== b.pid); }
     else return J({ error: 'op' }, 400);
-    await putDoc(env, 'secret/gallery', G); return J({ who, items: G.items });
+    await putDoc(env, 'secret/gallery', G); return J({ who, items: G.items, memo: G.memo || '' });
   }
   if (route === 'login' && req.method === 'POST') {
     const b = await req.json().catch(() => ({})); const t = await adminToken(env);
@@ -173,7 +185,7 @@ export async function onRequest(ctx) {
       if (!okPath(doc, true)) return J({ error: 'bad_path' }, 400);
       if (!canRead(doc.slice(0, doc.lastIndexOf('/')), admin)) return J({ exists: false });
       if (doc === 'weather/daegu') ctx.waitUntil(refreshWeather(env));
-      if (doc === 'board/main') await pinPoster(env);
+      if (doc === 'board/main') { await pinPoster(env); await fillWip(env); }
       const d = await getDoc(env, doc); return J(d ? { exists: true, data: d } : { exists: false });
     }
     if (coll) {

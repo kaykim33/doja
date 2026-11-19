@@ -7456,7 +7456,7 @@ const FCUPV = (() => {
 const SGAL = (() => {
   const NAME = { k: '케이', j: '자판기' }, MAX = 20;
   const st = { who: null, items: [], open: false };
-  async function api(body) { const r = await fetch('/api/sgal', body ? { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin' }); if (!r.ok) throw Object.assign(new Error('sgal'), { code: r.status }); const d = await r.json(); st.who = d.who; const L = d.items || [], B = x => Object.values(x.r || {}).includes(-1); st.items = L.filter(x => !B(x)).concat(L.filter(B)); return d; }
+  async function api(body) { const r = await fetch('/api/sgal', body ? { method: 'POST', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : { credentials: 'same-origin' }); if (!r.ok) throw Object.assign(new Error('sgal'), { code: r.status }); const d = await r.json(); st.who = d.who; st.memo = d.memo || ''; const L = d.items || [], B = x => Object.values(x.r || {}).includes(-1); st.items = L.filter(x => !B(x)).concat(L.filter(B)); return d; }
   // 3D: 비밀 작업실 입구 벽(문 오른쪽)에 작은 액자 넷
   const g = new THREE.Group(); g.position.set(-2.33, 0, SR.z0 + .02); SR.g.add(g);
   const frameM = std('#2b1d15', .6), mat = std('#efe6d2', .95);
@@ -7483,15 +7483,17 @@ const SGAL = (() => {
     const hb = el('button', 'sgb'); hb.type = 'button'; hb.textContent = '설명서'; hb.onclick = guide; right.append(hb);
     const xb = el('button', 'sgb'); xb.type = 'button'; xb.textContent = '닫기'; xb.onclick = close; right.append(xb); hd.append(right);
     const note = el('p', 'sgn'); note.textContent = `${NAME[st.who]} 님으로 보고 있어요 · 싫어요가 붙으면 흑백이 되고 맨 뒤로 가요`;
-    grid = el('div', 'sgg'); ov.append(hd, note, grid); document.body.append(ov); render(); if (!store.get('sgalGuide', false)) { store.set('sgalGuide', true); guide(); }
+    const memo = el('div', 'sgmemo'); memo.hidden = !st.memo && st.who !== 'k'; memo.textContent = st.memo || '케이: 이번 시안 안내를 적어 두세요'; if (st.who === 'k') { memo.title = '눌러서 고치기'; memo.style.cursor = 'pointer'; memo.onclick = async () => { const t = prompt('이번 시안 안내 (자판기에게 보이는 메모)', st.memo || ''); if (t == null) return; try { await api({ op: 'memo', memo: t }); } catch (e) {} memo.textContent = st.memo || '케이: 이번 시안 안내를 적어 두세요'; }; }
+    grid = el('div', 'sgg'); ov.append(hd, note, memo, grid); document.body.append(ov); render(); if (!store.get('sgalGuide', false)) { store.set('sgalGuide', true); guide(); }
     ov.addEventListener('keydown', e => { if (e.key === 'Escape') { if (ov.querySelector('.sgd')) ov.querySelector('.sgd').remove(); else close(); } });
   }
   function close() { if (ov) ov.remove(); ov = null; }
   // 설명서: 작가의 의도 + 쓰는 법
   function guide() { if (!ov || ov.querySelector('.sgguide')) return; const gd = el('div', 'sgguide'); gd.innerHTML = `<div class="sggi"><h3>비밀 갤러리 설명서</h3>
-<h4>작가의 의도</h4><p>케이가 만드는 포스터와 시안을 걸어 두는 작업 벽이에요. 완성본을 자랑하는 곳이 아니라, 아직 덜 마른 생각을 자판기와 둘이서만 먼저 보는 곳이에요. 공방 게시판에 붙기 전, 가마에 넣기 전의 초벌 같은 단계예요.</p>
+<h4>작가의 의도</h4><p>케이가 만드는 포스터와 시안을 걸어 두는 작업 벽이에요. 완성본을 자랑하는 곳이 아니라, 아직 덜 마른 생각을 자판기와 둘이서만 먼저 보는 곳이에요. 공방 게시판에 붙기 전, 초벌 가마에도 들어가기 전의 날흙 같은 단계예요. 아직 얼마든지 다시 주무를 수 있어요.</p>
 <p>좋다·싫다를 솔직하게 누를수록 다음 시안이 좋아져요. 싫어요는 실패가 아니라 방향 표시예요.</p>
 <h4>쓰는 법</h4><ol>
+<li><b>번호</b> — 시안마다 No.01, No.02… 번호와 임시 제목이 붙어 있어요. 이야기할 때 번호로 불러 주세요.</li>
 <li><b>보기</b> — 포스터를 누르면 크게 떠요. 두 손가락이나 휠로 확대, 두 번 톡 치면 바로 확대, 끌면 이동해요.</li>
 <li><b>좋아요 / 싫어요</b> — 한 사람이 하나씩, 다시 누르면 취소돼요. 싫어요가 하나라도 붙으면 <u>흑백</u>이 되고 <u>맨 뒤로</u> 밀려나요. 싫어요를 거두면 색과 자리가 돌아와요.</li>
 <li><b>코멘트</b> — 어디가 좋고 어디가 걸리는지 짧게. 누가 썼는지 케이·자판기로 표시돼요. 자기 코멘트는 ×로 지울 수 있어요.</li>
@@ -7504,7 +7506,7 @@ const SGAL = (() => {
   function render() { if (!grid) return; grid.innerHTML = ''; cnt.textContent = ` ${st.items.length} / ${MAX}`;
     if (!st.items.length) { const e = el('p', 'sge'); e.textContent = st.who === 'k' ? '아직 비어 있어요. ＋ 포스터로 올려 주세요. (여러 장 한 번에 돼요)' : '아직 비어 있어요. 케이가 곧 걸어 둘 거예요.'; grid.append(e); }
     st.items.forEach((it, i) => { const c = el('button', 'sgc' + (bad(it) ? ' bad' : '')); c.type = 'button'; c.setAttribute('aria-label', (it.title || '포스터') + ' 크게 보기');
-      const im = new Image(); im.src = '/_blob/' + it.img; im.alt = ''; im.loading = 'lazy'; const cap = el('div', 'sgcap'); const t = el('span'); t.textContent = it.title || '제목 없음'; const m = el('span', 'sgm'); m.textContent = `👍 ${n(it, 1)}  👎 ${n(it, -1)}  💬 ${(it.c || []).length}`; cap.append(t, m); c.append(im, cap); c.onclick = () => detail(i); grid.append(c); }); paint3D(); }
+      const im = new Image(); im.src = '/_blob/' + it.img; im.alt = ''; im.loading = 'lazy'; const cap = el('div', 'sgcap'); const t = el('span'); t.textContent = (it.n ? 'No.' + String(it.n).padStart(2, '0') + '  ' : '') + (it.title || '제목 없음'); const m = el('span', 'sgm'); m.textContent = `👍 ${n(it, 1)}  👎 ${n(it, -1)}  💬 ${(it.c || []).length}`; cap.append(t, m); c.append(im, cap); c.onclick = () => detail(i); grid.append(c); }); paint3D(); }
   async function uploadMany(files) {
     const room = MAX - st.items.length; if (room <= 0) { toast(`${MAX}장까지 걸 수 있어요. 하나 내리고 올려 주세요.`, null, null, 4); return; }
     const fs = files.slice(0, room); let ok = 0; cnt.textContent = ` 올리는 중… 0 / ${fs.length}`;
@@ -7534,7 +7536,7 @@ const SGAL = (() => {
     const nt = el('div', 'sgnote'); side.append(h, nt, rx, who, cl, form);
     if (st.who === 'k') { const adm = el('div', 'sgadm'); const rn = el('button', 'sgb'); rn.type = 'button'; rn.textContent = '제목 바꾸기'; rn.onclick = async () => { const t = prompt('제목', it.title || ''); if (t == null) return; try { await api({ op: 'title', pid: it.id, title: t }); } catch (e) {} refresh(); }; const dl = el('button', 'sgb'); dl.type = 'button'; dl.textContent = '내리기'; dl.onclick = async () => { if (!confirm('이 포스터를 갤러리에서 내릴까요?')) return; try { await api({ op: 'del', pid: it.id }); } catch (e) {} d.remove(); render(); }; const ne = el('button', 'sgb'); ne.type = 'button'; ne.textContent = '작가 노트'; ne.onclick = () => noteEdit(it, refresh); adm.append(ne, rn, dl); side.append(adm); }
     side.append(nav); d.append(view, side); ov.append(d);
-    function refresh() { const cur = st.items.find(x => x.id === it.id); if (!cur) { d.remove(); render(); return; } Object.assign(it, cur); h.textContent = it.title || '제목 없음'; d.classList.toggle('bad', bad(it)); nt.textContent = it.note || (st.who === 'k' ? '작가 노트가 비어 있어요. 이 시안의 의도를 적어 두면 자판기가 보고 코멘트하기 좋아요.' : ''); nt.classList.toggle('empty', !it.note); nt.hidden = !it.note && st.who !== 'k';
+    function refresh() { const cur = st.items.find(x => x.id === it.id); if (!cur) { d.remove(); render(); return; } Object.assign(it, cur); h.textContent = (it.n ? 'No.' + String(it.n).padStart(2, '0') + '  ' : '') + (it.title || '제목 없음'); d.classList.toggle('bad', bad(it)); nt.textContent = it.note || (st.who === 'k' ? '작가 노트가 비어 있어요. 이 시안의 의도를 적어 두면 자판기가 보고 코멘트하기 좋아요.' : ''); nt.classList.toggle('empty', !it.note); nt.hidden = !it.note && st.who !== 'k';
       R.forEach(([b, v, label]) => { const c = n(it, v); b.textContent = `${label} ${c || ''}`.trim(); b.classList.toggle('on', (it.r || {})[st.who] === v); b.setAttribute('aria-pressed', (it.r || {})[st.who] === v ? 'true' : 'false'); });
       who.textContent = Object.entries(it.r || {}).map(([k, v]) => `${NAME[k] || k} ${v > 0 ? '👍' : '👎'}`).join(' · ') || '아직 아무도 안 눌렀어요';
       cl.innerHTML = ''; (it.c || []).forEach(c => { const r = el('div', 'sgcm ' + c.who); const nm = el('b'); nm.textContent = NAME[c.who] || c.who; const tx2 = el('span'); tx2.textContent = c.t; r.append(nm, tx2); if (c.who === st.who || st.who === 'k') { const x = el('button', 'sgx'); x.type = 'button'; x.setAttribute('aria-label', '코멘트 지우기'); x.textContent = '×'; x.onclick = async () => { try { await api({ op: 'uncomment', pid: it.id, at: c.at }); } catch (e) {} refresh(); }; r.append(x); } cl.append(r); }); cl.scrollTop = 1e6; render(); }
@@ -7560,6 +7562,7 @@ const SGAL = (() => {
 .sgx{border:0;background:none;color:#a99f90;font-size:18px;line-height:1;cursor:pointer;padding:0 2px;min-width:28px;min-height:28px}
 .sgnote{font-size:13.5px;line-height:1.6;color:#d8cfc2;background:rgba(232,201,142,.08);border-left:0;border-radius:10px;padding:8px 12px;white-space:pre-wrap}.sgnote.empty{color:#8f8678;font-size:12.5px}.sgnote::before{content:'작가 노트';display:block;font-size:11px;color:#e8c98e;letter-spacing:.08em;margin-bottom:2px}
 .sgguide{position:absolute;inset:0;z-index:3;background:rgba(10,9,8,.72);display:flex;align-items:center;justify-content:center;padding:16px}.sggi{width:min(520px,100%);max-height:100%;overflow-y:auto;background:#24201c;border-radius:18px;padding:20px 20px 16px;box-sizing:border-box;line-height:1.6;font-size:14px}.sggi h3{margin:0 0 8px;font-family:'Gowun Batang',serif;font-size:20px}.sggi h4{margin:14px 0 4px;color:#e8c98e;font-size:13px;letter-spacing:.06em}.sggi p{margin:0 0 8px;color:#d8cfc2;word-break:keep-all}.sggi ol{margin:0 0 8px;padding-left:20px;color:#d8cfc2}.sggi li{margin-bottom:6px;word-break:keep-all}.sggi .sgfine{font-size:12px;color:#8f8678}.sggi textarea{width:100%;box-sizing:border-box;border-radius:12px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#efe8dc;padding:10px 12px;font:inherit;font-size:16px;resize:vertical;margin-bottom:10px}.sggi>.sgb{width:100%;margin-top:6px}
+.sgmemo{margin:0 0 12px;padding:10px 14px;border-radius:12px;background:rgba(232,201,142,.12);color:#f1e3c4;font-size:14px;line-height:1.55;word-break:keep-all}.sgmemo::before{content:'📌 이번 시안 안내';display:block;font-size:11.5px;color:#e8c98e;letter-spacing:.06em;margin-bottom:2px}
 .sgf{display:flex;gap:6px}.sgf input{flex:1;min-width:0;height:40px;border-radius:20px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.06);color:#efe8dc;padding:0 14px;font:inherit;font-size:16px}`;
   document.head.append(css);
   return { open, api, st };
