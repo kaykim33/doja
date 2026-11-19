@@ -6147,6 +6147,10 @@ const FDOOR = (() => {
   const panel = new THREE.Group(); panel.position.set(-W / 2, 0, 0); hinge.add(panel);
   mesh(rbox(W - .02, H - .02, .05, .01), wood, 0, H / 2, -.03, panel);
   [[-.2, 1.55, .3, .62], [.2, 1.55, .3, .62], [-.2, .55, .3, .7], [.2, .55, .3, .7]].forEach(([x, y, w, h]) => mesh(rbox(w, h, .012, .006), woodD, x, y, -.06, panel));
+  // 문 위 명패: 대표실
+  { const tx = canvasTex(384, 96, (c, w, h) => { const gr = c.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#d9b878'); gr.addColorStop(1, '#a8834a'); c.fillStyle = gr; c.fillRect(0, 0, w, h); c.strokeStyle = 'rgba(60,40,20,.55)'; c.lineWidth = 4; c.strokeRect(8, 8, w - 16, h - 16);
+      c.fillStyle = '#2b1d12'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = '700 50px "Gowun Batang", serif'; c.fillText('대 표 실', w / 2, h / 2 + 3); });
+    const np = mesh(new THREE.PlaneGeometry(.36, .09), std('#ffffff', .35, { map: tx, metalness: .55 }), 0, H + .14, -.06, g, false); np.rotation.y = Math.PI; mesh(rbox(.38, .1, .012, .004), std('#5e4030', .6), 0, H + .14, -.05, g); }
   // 관계자 외 출입금지 푯말 (끈에 걸려 살짝 기울어짐)
   { const sg = new THREE.Group(); sg.position.set(0, 1.62, -.075); sg.rotation.z = .04; panel.add(sg);
     const tx = canvasTex(512, 256, (c, w, h) => { c.fillStyle = '#f7f3ea'; c.fillRect(0, 0, w, h); c.strokeStyle = '#a3262f'; c.lineWidth = 14; c.strokeRect(14, 14, w - 28, h - 28); c.lineWidth = 3; c.strokeRect(32, 32, w - 64, h - 64);
@@ -6322,7 +6326,7 @@ const SECRET = (() => {
     sheet(t[0], t[1], [el('small', null, `찾은 비밀 ${found.size} / ${Object.keys(TXT).length}`)]);
     if (AU && AU.ctx) tone(AU.ctx.currentTime, 520, .03 * MIX.amb, .005, .4, 'sine', .3);
     if (TEACH[id] && Math.random() < .6) setTimeout(() => { try { teacherSay(TEACH[id], 4); } catch (e) {} }, 900);
-    if (found.size === Object.keys(TXT).length && !store.get('secretAll', false)) { store.set('secretAll', true); setTimeout(() => toast('비밀 작업실을 전부 둘러봤어요. 상자와 초록 문은… 다음에 열려요.', null, null, 7), 1200); }
+    if (found.size === Object.keys(TXT).length && !store.get('secretAll', false)) { store.set('secretAll', true); setTimeout(() => toast('대표실을 전부 둘러봤어요. 상자와 초록 문은… 다음에 열려요.', null, null, 7), 1200); }
   }
   return { show, get inside() { return WALK.z > SR.z0 - .05; } };
 })();
@@ -6350,7 +6354,7 @@ const SECRET = (() => {
   const inS = WALK.z > 4.0;
   if (Math.abs(WALK.x - FDOOR.P.x) < .5 && WALK.z > 3.4 && WALK.z < SR.z0 + .55 && FDOOR.closeAt) FDOOR.closeAt = performance.now() + 2500; // 문간에 서 있으면 기다려요
   if (WALK.z > SR.z0 + .55 && FDOOR.target) { FDOOR.target = 0; FDOOR.closeAt = 0; setTimeout(() => { if (AU.ctx) { const t = AU.ctx.currentTime; noiseHit(t, 'lowpass', 260, .8, .09 * MIX.amb, .003, .12, .1); tone(t + .1, 1400, .02 * MIX.amb, .002, .05, 'square', .2); tone(t + .17, 1100, .02 * MIX.amb, .002, .05, 'square', .2); } }, 700); } // 들어가면 바로 닫고 잠가요
-  if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('자판기의 비밀 작업실이에요. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
+  if (inS !== wasIn) { wasIn = inS; if (inS && !store.get('secretIn', false)) { store.set('secretIn', true); setTimeout(() => toast('대표실이에요. 자판기의 비밀 작업실이자 둘만의 회의실. 이것저것 눌러 보세요.', null, null, 6), 400); } SR.bulb.material.color.copy(C(inS ? '#ffe0b0' : '#ffd9a0')); }
   SR.lamp.intensity = 1.2 + Math.sin(now / 900) * .04 + (Math.random() < .004 ? -.5 : 0); })(last); }
 { const zf = zones; zones = function () { const Z = zf(); if (WALK.z > 4.0) { Object.entries(SR.spots).forEach(([id, p]) => Z.push({ id: 'secret', x: p[0], z: p[1], r: .45, text: { note: '노트 보기', pile: '실패작 더미', bowl: '첫 그릇', photo: '사진 보기', tiles: '유약 견본판', chest: '잠긴 상자', door2: '초록 문' }[id], run: () => SECRET.show(id) })); Z.push({ id: 'out', x: FDOOR.P.x, z: SR.z0 + .35, r: .45, text: '공방으로 나가기', run: () => FDOOR.unlock() }); } return Z; }; }
 
