@@ -6104,7 +6104,7 @@ const FROST = (() => {
   const mat0 = () => new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, opacity: 0 });
   // 유리 칸마다 서리 한 장: [부모, 가로, 세로, 위치, 언제 보이나]
   const P = [];
-  WIN.sash.forEach((sh, i) => { const w = i === 0 ? 2.02 : .6; P.push({ par: sh.p, w, h: 1.38, pos: [0, -.74, .012], show: () => WIN.open < .2 }); });
+  WIN.sash.forEach((sh, i) => { const w = 2.02; P.push({ par: sh.p, w, h: 1.38, pos: [0, -.74, .012], show: () => WIN.open < .2 }); });
   P.push({ par: scene, w: WX * 2 - .04, h: Math.max(.2, WY1 - 2.38), pos: [0, (2.32 + WY1) / 2, -4.028], show: () => true });
   if (DOOR && DOOR.g) P.push({ par: DOOR.g, w: 1.9 - .12, h: 2.3 - .2, pos: [0, 2.3 / 2 + .03, .014], show: () => DOOR.open < .2 });
   P.forEach(o2 => { const CW = Math.round(256 * Math.min(3, o2.w / o2.h * 1.5)) || 256, CH = Math.round(CW * o2.h / o2.w); o2.cv = document.createElement('canvas'); o2.cv.width = CW; o2.cv.height = CH; o2.x = o2.cv.getContext('2d'); o2.tex = new THREE.CanvasTexture(o2.cv); o2.mat = mat0(); o2.mat.map = o2.tex;
@@ -6136,7 +6136,7 @@ const FROST = (() => {
   const start = () => { o.draw = true; renderActs(); showHint('창문을 문질러 그림을 그려요. 서리는 천천히 다시 덮여요.', 6); if (!S.frostTold) { S.frostTold = true; try { teacherSay(pick(['어릴 때 버스 창문에 하던 거죠? 저도 해요.', '서리 그림은 저장이 안 돼요. 그래서 좋아요.']), 4); } catch (er) {} } };
   o.toggle = () => { if (o.draw) { o.draw = false; renderActs(); return; } if (S.station !== 'wind') { go('wind'); setTimeout(start, 900); } else start(); };
   // 창가 앞을 지나가면 바로 그릴 수 있게
-  { const zf = zones; zones = function () { const Z = zf(); try { if (o.cold() && S.mode === 'walk' && WALK.z < -2.2 && WALK.z > -4.1) { const w = Z.find(z => z.id === 'wind'); if (w) w.text = '창가에서 바람 쐬기'; Z.push({ id: 'frost', x: -1.1, z: -3.5, r: 1.5, text: '❄ 서리에 그림 그리기', run: () => o.toggle() }); } } catch (e) {} return Z; }; }
+  { const zf = zones; zones = function () { const Z = zf(); try { if (o.cold() && S.mode === 'walk' && WALK.z < -1.9 && WALK.z > -4.1) { const w = Z.find(z => z.id === 'wind'); if (w) w.text = '창가에서 바람 쐬기'; Z.push({ id: 'frost', x: clamp(WALK.x, -3.2, 3.2), z: WALK.z, r: 1.5, text: '❄ 서리에 그림 그리기', run: () => o.toggle() }); } } catch (e) {} return Z; }; }
   return o;
 })();
 { const ra = renderActs; renderActs = function () { ra(); if (S.station === 'wind' && FROST.cold && FROST.cold()) ui.acts.append(btn(FROST.draw ? '서리 그림 그만' : '서리에 그림 그리기', FROST.toggle)); }; }
