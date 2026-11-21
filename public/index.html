@@ -3582,6 +3582,36 @@ function applySeason(s) {
   hillM.color.copy(C(P.hill)); litterColors(s); fallColors(s);
 }
 
+// ---- 늦가을: 11월 초부터 잎이 점점 떨어져요 (12월 초면 거의 앙상)
+const LATE = (() => {
+  const q = new URLSearchParams(location.search).get('leaf');
+  const prog = () => { if (q != null && q !== '') return clamp(+q, 0, 1); if (SEASON.cur !== 'autumn') return 0; const k = new Date(Date.now() + 9 * 36e5), m = k.getUTCMonth() + 1, d = k.getUTCDate(); if (m < 11) return 0; return clamp(((m - 11) * 30 + d - 5) / 26, 0, 1); };
+  const brown = C('#8a6a44'), tmp = new THREE.Color();
+  // 바닥에 더 깔리는 낙엽 (은행나무 밑은 노란 카펫)
+  const N = 900, extra = new THREE.InstancedMesh(new THREE.PlaneGeometry(.075, .055), new THREE.MeshLambertMaterial({ side: THREE.DoubleSide }), N); extra.receiveShadow = true; scene.add(extra);
+  extra.setColorAt(0, C('#ffffff'));
+  const o = { p: 0 };
+  function apply() {
+    const p = o.p = prog();
+    GTREES.forEach(t => { if (t.type === 'pine' || !t.fol) return; const n = t.fol.length, keep = Math.max(1, Math.ceil(n * (1 - (t.type === 'ginkgo' ? .9 : .82) * p)));
+      t.fol.forEach((m, i) => { const s0 = m.userData.s0 || (m.userData.s0 = m.scale.clone()); m.visible = i < keep; m.scale.copy(s0).multiplyScalar(1 - .45 * p); m.material.color.lerp(brown, .45 * p); }); });
+    BGFOL.forEach(m => { const s0 = m.userData.s0 || (m.userData.s0 = m.scale.clone()); m.scale.copy(s0).multiplyScalar(1 - .38 * p); m.material.color.lerp(brown, .4 * p); });
+    const pal = LEAF_C.autumn, dec = GTREES.filter(t => t.type !== 'pine'), show = Math.round(N * p);
+    for (let i = 0; i < N; i++) { let x = 0, z = 0, col = pick(pal);
+      if (i < show && dec.length) { const r = Math.random();
+        if (r < .75) { const t = pick(dec); const a = rand(0, TAU), d = Math.sqrt(Math.random()) * 2.6 * t.k; x = t.x + Math.cos(a) * d; z = t.z + Math.sin(a) * d; if (t.type === 'ginkgo') col = pick(['#e8bb3a', '#efc94a', '#dcae30', '#f2d35a']); }
+        else { const s2 = pick(GARDEN.samples); x = s2.x + rand(-.7, .7); z = s2.z + rand(-.7, .7); } }
+      const ok = i < show && z < -4.5 && Math.abs(x) < 9.2 && z > -16;
+      _o.position.set(x, -.005 + (i % 9) * .0005, z); _o.rotation.set(-Math.PI / 2 + rand(-.25, .25), rand(-.2, .2), rand(0, TAU)); _o.scale.setScalar(ok ? rand(.8, 1.35) : 0); _o.updateMatrix(); extra.setMatrixAt(i, _o.matrix);
+      if (ok) extra.setColorAt(i, tmp.set(col).convertSRGBToLinear().multiplyScalar(rand(.7, 1))); }
+    extra.instanceMatrix.needsUpdate = true; if (extra.instanceColor) extra.instanceColor.needsUpdate = true;
+    // 떨어지는 잎은 남은 잎만큼
+    if (p > 0) FALL.forEach((f, i) => { if (f.on && i > 150 * (1 - .6 * p)) { f.on = false; f.y = -1; } });
+  }
+  { const as = applySeason; applySeason = function (s) { as.apply(this, arguments); try { apply(); } catch (e) {} }; }
+  setInterval(() => { const p = prog(); if (Math.abs(p - o.p) > .03) { try { applySeason(SEASON.cur); } catch (e) {} } }, 6 * 3600e3);
+  return o;
+})();
 // ---- 장소 · 걷기
 PLACES.splice(PLACES.findIndex(p => p.id === 'fountain') + 1, 0, { id: 'garden', name: '정원', han: '園' });
 FOCUS.garden = { wind: .55, fire: 0, water: .04, wheel: 0, room: .1 };
