@@ -6992,7 +6992,7 @@ const KOPEN = (() => {
     }, 2200 + i * 700));
   };
   // 안내 / 실시간 열기
-  o.announce = () => { if (o.waiting()) { toast(`🔥 ${whenText()} 가마 여는 날! 지금 가마에 넣는 작품은 가마 속에서 기다렸다가 다 같이 꺼내요.`, '가마로', () => go('kiln'), 9); try { teacherSay('내일은 가마 여는 날이에요. 넣을 거 있으면 오늘 넣어요.', 5); } catch (e) {} } else { toast('🔥 가마가 열렸어요! 이번 가마 작품을 다 같이 구경해요.', '가마 열기 보기', () => o.ceremony(), 10); } };
+  o.announce = () => { if (o.waiting()) { toast(`🔥 ${whenText()} 가마 여는 날! 지금 가마에 넣는 작품은 가마 속에서 기다렸다가 다 같이 꺼내요.`, '가마로', () => go('kiln'), 9); try { teacherSay('내일은 가마 여는 날이에요. 넣을 거 있으면 오늘 넣어요.', 5); } catch (e) {} } else if (!store.get('kopenToast2611', false) && Date.now() < o.openAt + 3 * 864e5) { store.set('kopenToast2611', true); toast('🔥 가마가 열렸어요! 이번 가마 작품을 다 같이 구경해요.', '가마 열기 보기', () => o.ceremony(), 10); } }; // 열린 뒤엔 한 번만, 사흘까지
   $('#enter').addEventListener('click', () => setTimeout(o.announce, 7000));
   let was = o.opened(); setInterval(() => { const now = o.opened(); if (!was && now && S.mode !== 'title') { toast('🔥 지금 가마를 엽니다! 다 같이 봐요.', '보러 가기', () => o.ceremony(), 15); try { teacherSay('자, 엽니다! 다들 모이세요!', 6); } catch (e) {} } was = now; }, 5000);
   return o;
